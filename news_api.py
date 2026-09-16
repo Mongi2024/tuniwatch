@@ -1,20 +1,43 @@
 """
 Module news_api - Fonctions reutilisables pour NewsAPI
-Etape B - Session 2
+Etape B - Session 2 (avec support Streamlit Secrets)
 """
 
 import os
 import requests
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 
-# Charge la cle API depuis le fichier .env
-load_dotenv()
+# ============================================================
+# CHARGEMENT DE LA CLE API (Streamlit Secrets OU .env)
+# ============================================================
+API_KEY = None
 
-API_KEY = os.getenv("NEWSAPI_KEY")
+# 1. Essayer Streamlit Secrets (cloud Streamlit)
+try:
+    import streamlit as st
+    API_KEY = st.secrets.get("NEWSAPI_KEY")
+except Exception:
+    pass
+
+# 2. Si pas trouve, essayer le fichier .env (local)
+if not API_KEY:
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        API_KEY = os.getenv("NEWSAPI_KEY")
+    except Exception:
+        pass
+
+# 3. Afficher un avertissement si rien n'est trouve
+if not API_KEY:
+    print("ATTENTION : NEWSAPI_KEY non trouvee (ni Streamlit Secrets, ni .env)")
+
 API_URL = "https://newsapi.org/v2/everything"
 
 
+# ============================================================
+# FONCTIONS
+# ============================================================
 def est_configure():
     """Verifie que la cle API est bien chargee."""
     return API_KEY is not None and len(API_KEY) > 10
@@ -95,3 +118,37 @@ def recuperer_news_multi(mots_cles, langue="fr", nb_par_mot=10, jours=7):
     # Tri par date decroissante
     tous.sort(key=lambda x: x["date"], reverse=True)
     return tous
+
+
+# ============================================================
+# TEST
+# ============================================================
+if __name__ == "__main__":
+    print("=" * 60)
+    print("TEST DU MODULE news_api.py")
+    print("=" * 60)
+    print()
+
+    if est_configure():
+        print("Cle API chargee : OK")
+        print(f"   Debut : {API_KEY[:8]}...")
+        print()
+
+        print("Test de recuperation (5 articles sur 'Tunisie')...")
+        articles = recuperer_news("Tunisie", nb_articles=5, jours=7)
+
+        if articles:
+            print(f"OK - {len(articles)} articles recuperes")
+            for i, a in enumerate(articles[:3], 1):
+                print(f"   {i}. {a['titre'][:70]}...")
+        else:
+            print("Aucun article recupere")
+    else:
+        print("ATTENTION : Cle API non configuree")
+        print("   - En local : ajoutez NEWSAPI_KEY dans .env")
+        print("   - Sur Streamlit Cloud : ajoutez dans Settings > Secrets")
+
+    print()
+    print("=" * 60)
+    print("TEST TERMINE")
+    print("=" * 60)
