@@ -1,9 +1,10 @@
 """
 Module cockpit_stats.py - Requetes pour le dashboard Cockpit
-Etape G - Session 1 (avec db_universal)
+Etape G - Session 1 (avec db_universal + fix SQLite)
 """
 
 from db_universal import get_connexion
+from datetime import datetime, timedelta
 
 
 def kpis_globaux():
@@ -22,11 +23,10 @@ def kpis_globaux():
                 (SELECT COUNT(*) FROM articles_sentiment) AS total_analyses_sentiment,
                 (SELECT COUNT(DISTINCT article_id) FROM articles_themes) AS articles_classes,
                 (SELECT COUNT(DISTINCT theme) FROM articles_themes) AS themes_actifs,
-                (SELECT ROUND(AVG(score), 2) FROM articles_sentiment) AS score_moyen
+                (SELECT AVG(score) FROM articles_sentiment) AS score_moyen
         """)
         result = curseur.fetchone()
         if result:
-            # Convertir les Decimal en int/float pour compatibilite SQLite
             return {
                 "total_articles": int(result.get("total_articles") or 0),
                 "total_sources": int(result.get("total_sources") or 0),
@@ -34,7 +34,7 @@ def kpis_globaux():
                 "total_analyses_sentiment": int(result.get("total_analyses_sentiment") or 0),
                 "articles_classes": int(result.get("articles_classes") or 0),
                 "themes_actifs": int(result.get("themes_actifs") or 0),
-                "score_moyen": float(result.get("score_moyen") or 0)
+                "score_moyen": round(float(result.get("score_moyen") or 0), 2)
             }
         return {}
     finally:
@@ -70,7 +70,13 @@ def stats_sentiment():
 
 
 def evolution_mentions(jours=30):
-    """Evolution du nombre d'articles par jour."""
+    """
+    Evolution du nombre d'articles par jour.
+    Version compatible MySQL + SQLite (dates calculees en Python).
+    """
+    # Calculer la date limite en Python (compatible partout)
+    date_limite = (datetime.now() - timedelta(days=jours)).strftime("%Y-%m-%d %H:%M:%S")
+
     conn = get_connexion()
     if conn is None:
         return []
@@ -81,12 +87,11 @@ def evolution_mentions(jours=30):
                 DATE(date_ajout) AS jour,
                 COUNT(*) AS nb
             FROM articles
-            WHERE date_ajout >= DATE_SUB(NOW(), INTERVAL %s DAY)
+            WHERE date_ajout >= %s
             GROUP BY DATE(date_ajout)
             ORDER BY jour
-        """, (jours,))
+        """, (date_limite,))
         rows = curseur.fetchall()
-        # Convertir les Decimal en int
         return [
             {"jour": str(r["jour"]), "nb": int(r["nb"])}
             for r in rows
@@ -273,38 +278,32 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
 
-    # Test 1 : KPIs globaux
     print("1. KPIs globaux :")
     kpis = kpis_globaux()
     for k, v in kpis.items():
         print(f"   {k}: {v}")
     print()
 
-    # Test 2 : Sentiment
     print("2. Sentiment global :")
     sentiment = stats_sentiment()
     print(f"   {sentiment}")
     print()
 
-    # Test 3 : Themes
-    print("3. Repartition par theme :")
+    print("3. Evolution mentions (30 jours) :")
+    evolution = evolution_mentions(30)
+    print(f"   {len(evolution)} jours avec donnees")
+    print()
+
+    print("4. Repartition par theme :")
     themes = stats_themes_rapide()
     for t in themes:
         print(f"   {t['theme']}: {t['nb_articles']} articles")
     print()
 
-    # Test 4 : Top sources
-    print("4. Top 3 sources :")
+    print("5. Top 3 sources :")
     sources = top_sources(3)
     for s in sources:
         print(f"   {s['source']}: {s['nb_articles']} articles")
-    print()
-
-    # Test 5 : Derniers articles
-    print("5. Derniers 2 articles :")
-    derniers = derniers_articles(2)
-    for d in derniers:
-        print(f"   - {d['titre'][:60]}...")
     print()
 
     print("=" * 60)

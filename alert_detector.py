@@ -1,9 +1,10 @@
 """
 Module alert_detector.py - Detection automatique d'anomalies
-Etape H - Session 1 (avec db_universal)
+Etape H - Session 1 (avec db_universal + fix SQLite)
 """
 
 from db_universal import get_connexion
+from datetime import datetime, timedelta
 
 
 # ============================================================
@@ -19,14 +20,18 @@ def detecter_pics_mentions():
     alertes = []
 
     try:
+        # Dates calculees en Python (compatible MySQL + SQLite)
+        date_3j = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
+        date_10j = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d %H:%M:%S")
+
         # Articles recents (3 derniers jours)
         curseur.execute("""
             SELECT at.theme, COUNT(DISTINCT at.article_id) AS nb_recents
             FROM articles_themes at
             JOIN articles a ON a.id = at.article_id
-            WHERE a.date_ajout >= DATE_SUB(NOW(), INTERVAL 3 DAY)
+            WHERE a.date_ajout >= %s
             GROUP BY at.theme
-        """)
+        """, (date_3j,))
         recents = {r["theme"]: int(r["nb_recents"]) for r in curseur.fetchall()}
 
         # Articles precedents (7 jours avant)
@@ -34,10 +39,9 @@ def detecter_pics_mentions():
             SELECT at.theme, COUNT(DISTINCT at.article_id) AS nb_anciens
             FROM articles_themes at
             JOIN articles a ON a.id = at.article_id
-            WHERE a.date_ajout BETWEEN DATE_SUB(NOW(), INTERVAL 10 DAY)
-                                    AND DATE_SUB(NOW(), INTERVAL 3 DAY)
+            WHERE a.date_ajout BETWEEN %s AND %s
             GROUP BY at.theme
-        """)
+        """, (date_10j, date_3j))
         anciens = {r["theme"]: int(r["nb_anciens"]) for r in curseur.fetchall()}
 
         # Comparer
@@ -110,23 +114,26 @@ def detecter_baisse_activite():
     alertes = []
 
     try:
+        # Dates calculees en Python
+        date_7j = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+        date_14j = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d %H:%M:%S")
+
         curseur.execute("""
             SELECT at.theme, COUNT(DISTINCT at.article_id) AS nb_recents
             FROM articles_themes at
             JOIN articles a ON a.id = at.article_id
-            WHERE a.date_ajout >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            WHERE a.date_ajout >= %s
             GROUP BY at.theme
-        """)
+        """, (date_7j,))
         recents = {r["theme"]: int(r["nb_recents"]) for r in curseur.fetchall()}
 
         curseur.execute("""
             SELECT at.theme, COUNT(DISTINCT at.article_id) AS nb_anciens
             FROM articles_themes at
             JOIN articles a ON a.id = at.article_id
-            WHERE a.date_ajout BETWEEN DATE_SUB(NOW(), INTERVAL 14 DAY)
-                                    AND DATE_SUB(NOW(), INTERVAL 7 DAY)
+            WHERE a.date_ajout BETWEEN %s AND %s
             GROUP BY at.theme
-        """)
+        """, (date_14j, date_7j))
         anciens = {r["theme"]: int(r["nb_anciens"]) for r in curseur.fetchall()}
 
         for theme, nb_ancien in anciens.items():
@@ -159,13 +166,16 @@ def detecter_volume_global():
     alertes = []
 
     try:
+        # Date calculee en Python
+        date_7j = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+
         curseur.execute("""
             SELECT DATE(date_ajout) AS jour, COUNT(*) AS nb
             FROM articles
-            WHERE date_ajout >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            WHERE date_ajout >= %s
             GROUP BY DATE(date_ajout)
             ORDER BY jour
-        """)
+        """, (date_7j,))
 
         jours = curseur.fetchall()
 
@@ -202,12 +212,14 @@ def sauvegarder_alerte(alerte):
 
     curseur = conn.cursor()
     try:
+        # Date calculee en Python
+        date_24h = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+
         # Verifier si alerte similaire dans les 24h
         curseur.execute("""
             SELECT id FROM alertes
-            WHERE message = %s
-              AND date_creation >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-        """, (alerte["message"],))
+            WHERE message = %s AND date_creation >= %s
+        """, (alerte["message"], date_24h))
 
         if curseur.fetchone():
             return False
@@ -446,19 +458,19 @@ def get_articles_lies_alerte(alerte):
                 for r in rows
             ]
 
-        # Cas 2 : Pic de mentions
+        # Cas 2 : Pic de mentions (7 derniers jours)
         if "pic" in message:
+            date_7j = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
             curseur.execute("""
                 SELECT DISTINCT
                     a.id, a.titre, a.source, a.url, a.date_publication,
                     at.score AS score_theme
                 FROM articles a
                 JOIN articles_themes at ON at.article_id = a.id
-                WHERE at.theme = %s
-                  AND a.date_ajout >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                WHERE at.theme = %s AND a.date_ajout >= %s
                 ORDER BY a.date_ajout DESC
                 LIMIT 20
-            """, (mot_cle,))
+            """, (mot_cle, date_7j))
             rows = curseur.fetchall()
             return [
                 {
@@ -554,14 +566,12 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
 
-    # Statistiques
     print("Statistiques actuelles :")
     stats = stats_alertes()
     print(f"   Total : {stats.get('total', 0)}")
     print(f"   Non lues : {stats.get('non_lues', 0)}")
     print()
 
-    # Test articles lies
     alertes = lister_alertes(limite=3)
     print(f"Test articles lies ({len(alertes)} alertes) :")
     for alerte in alertes:
