@@ -12,9 +12,10 @@ __pycache__/
 .env
 config_secret.py
 
-# Fichiers locaux
+# Fichiers locaux (sauf la base de donnees de l'observatoire)
 *.db
 *.sqlite
+!tuniwatch.db
 __pycache__/
 
 # IDE
