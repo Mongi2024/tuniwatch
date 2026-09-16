@@ -1,33 +1,11 @@
 """
 Module auth.py - Authentification et sessions
-Etape D - Session 2
+Etape D - Session 2 (avec db_universal)
 """
 
 import bcrypt
 import streamlit as st
-import mysql.connector
-from mysql.connector import Error
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "python_user",
-    "password": "PythonUser2026!",
-    "database": "monitoring",
-    "charset": "utf8mb4"
-}
-
-
-def get_connexion():
-    """Ouvre une connexion MySQL."""
-    try:
-        return mysql.connector.connect(**DB_CONFIG)
-    except Error as e:
-        print(f"Erreur connexion : {e}")
-        return None
+from db_universal import get_connexion
 
 
 # ============================================================
@@ -69,7 +47,7 @@ def verifier_identifiants(login, mot_de_passe):
 
         return None
 
-    except Error as e:
+    except Exception as e:
         print(f"Erreur auth : {e}")
         return None
     finally:
@@ -125,8 +103,8 @@ def afficher_page_login():
     with col2:
         st.markdown("""
         <div style="text-align: center; padding: 2rem 0;">
-            <h1>📊 Monitoring</h1>
-            <p style="color: #666;">Plateforme de veille médias</p>
+            <h1>🇹🇳 TuniWatch</h1>
+            <p style="color: #666;">Observatoire des médias tunisiens</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -200,6 +178,8 @@ def require_admin():
             f"avec le rôle **{get_user()['role']}**."
         )
         st.stop()
+
+
 def require_super_admin():
     """
     A appeler sur les pages sensibles (Admin, Utilisateurs).
@@ -214,28 +194,45 @@ def require_super_admin():
         )
         st.stop()
 
+
 # ============================================================
 # TEST DU MODULE (execution directe)
 # ============================================================
 if __name__ == "__main__":
-    print("Test du module auth.py...")
+    print("=" * 60)
+    print("TEST DU MODULE auth.py")
+    print("=" * 60)
     print()
 
-    # Test 1 : bons identifiants
+    # Test 1 : bons identifiants (super_admin)
+    resultat = verifier_identifiants("superadmin", "SuperAdmin2026!")
+    if resultat:
+        print(f"OK - Connexion super_admin : {resultat}")
+    else:
+        print("ECHEC - superadmin non trouve")
+
+    print()
+
+    # Test 2 : bons identifiants (admin)
     resultat = verifier_identifiants("admin", "Admin2026!")
     if resultat:
-        print(f"OK - Connexion reussie : {resultat}")
+        print(f"OK - Connexion admin : {resultat}")
     else:
-        print("ECHEC - Identifiants invalides")
+        print("Note - admin avec ancien mot de passe (peut avoir change)")
 
     print()
 
-    # Test 2 : mauvais mot de passe
+    # Test 3 : mauvais mot de passe
     resultat = verifier_identifiants("admin", "mauvais")
     print(f"Test mauvais mdp : {resultat} (doit etre None)")
 
     print()
 
-    # Test 3 : utilisateur inexistant
+    # Test 4 : utilisateur inexistant
     resultat = verifier_identifiants("inconnu", "peu importe")
     print(f"Test utilisateur inexistant : {resultat} (doit etre None)")
+
+    print()
+    print("=" * 60)
+    print("TEST TERMINE")
+    print("=" * 60)

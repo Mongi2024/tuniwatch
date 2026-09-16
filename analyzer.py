@@ -1,39 +1,17 @@
 """
 Module analyzer.py - Analyse automatique des articles
 Detecte les themes dans chaque article via les mots-cles
-Version 0.3 - Avec filtre intelligent et clubs sportifs
+Version 0.4 - Avec db_universal
 Etape F - Session 2
 """
 
-import mysql.connector
-from mysql.connector import Error
+from db_universal import get_connexion
 import re
 import unicodedata
 
 
-# ============================================================
-# CONFIGURATION
-# ============================================================
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "python_user",
-    "password": "PythonUser2026!",
-    "database": "monitoring",
-    "charset": "utf8mb4"
-}
-
 # Seuil de pertinence (score minimum pour classer un article)
 SEUIL_MINIMUM = 1.0
-
-
-def get_connexion():
-    """Ouvre une connexion MySQL."""
-    try:
-        return mysql.connector.connect(**DB_CONFIG)
-    except Error as e:
-        print(f"Erreur connexion : {e}")
-        return None
 
 
 # ============================================================
@@ -50,19 +28,10 @@ def normaliser_texte(texte):
     if not texte:
         return ""
 
-    # Minuscules
     texte = texte.lower()
-
-    # Supprimer les diacritiques (accents francais, tashkeel arabe)
     texte = unicodedata.normalize("NFKD", texte)
-
-    # Retirer les marques de combinaison (accents)
     texte = "".join(c for c in texte if not unicodedata.combining(c))
-
-    # Remplacer la ponctuation par des espaces
     texte = re.sub(r"[^\w\s]", " ", texte, flags=re.UNICODE)
-
-    # Espaces multiples
     texte = re.sub(r"\s+", " ", texte).strip()
 
     return texte
@@ -71,7 +40,6 @@ def normaliser_texte(texte):
 # ============================================================
 # DETECTION DE CONTEXTE TUNISIEN
 # ============================================================
-# Mots qui indiquent que l'article parle de la Tunisie
 MOTS_TUNISIE = [
     # Pays et adjectifs
     "tunisie", "tunisien", "tunisienne", "tunisiens", "tunisiennes",
@@ -113,9 +81,7 @@ MOTS_TUNISIE = [
 
 
 def est_article_tunisien(texte_normalise):
-    """
-    Verifie si l'article mentionne la Tunisie ou une ville tunisienne.
-    """
+    """Verifie si l'article mentionne la Tunisie ou une ville tunisienne."""
     for mot in MOTS_TUNISIE:
         mot_norm = normaliser_texte(mot)
         if not mot_norm:
@@ -127,10 +93,7 @@ def est_article_tunisien(texte_normalise):
 
 
 def contient_mot_theme_fort(texte_normalise, themes_mots):
-    """
-    Verifie si l'article contient un mot-cle de POIDS FORT (>= 1.5).
-    Si oui, on considere qu'il est pertinent meme sans mention tunisienne.
-    """
+    """Verifie si l'article contient un mot-cle de POIDS FORT (>= 1.5)."""
     for theme, mots in themes_mots.items():
         for mot_info in mots:
             if mot_info["poids"] >= 1.5 and len(mot_info["mot"]) >= 4:
@@ -145,9 +108,7 @@ def contient_mot_theme_fort(texte_normalise, themes_mots):
 # CHARGEMENT DES MOTS-CLES
 # ============================================================
 def charger_mots_par_theme():
-    """
-    Charge tous les mots-cles actifs, groupes par theme.
-    """
+    """Charge tous les mots-cles actifs, groupes par theme."""
     conn = get_connexion()
     if conn is None:
         return {}
@@ -169,7 +130,7 @@ def charger_mots_par_theme():
             themes[theme].append({
                 "mot": normaliser_texte(row["mot"]),
                 "mot_original": row["mot"],
-                "poids": row["poids"],
+                "poids": float(row["poids"]),
                 "langue": row["langue"]
             })
 
@@ -183,26 +144,13 @@ def charger_mots_par_theme():
 # ANALYSE D'UN ARTICLE
 # ============================================================
 def analyser_article(titre, description, themes_mots):
-    """
-    Analyse un article et retourne les themes detectes.
-
-    Args:
-        titre : titre de l'article
-        description : description/texte
-        themes_mots : dict {theme: [mots]}
-
-    Returns:
-        dict {theme: {"score": X, "nb_mots": Y, "mots": [...]}}
-    """
-    # Texte complet normalise
+    """Analyse un article et retourne les themes detectes."""
     texte_complet = normaliser_texte(f"{titre} {description}")
 
     if not texte_complet:
         return {}
 
-    # FILTRE INTELLIGENT : accepter si :
-    # 1. Article tunisien
-    # 2. OU article tres pertinent (contient un mot fort >= 1.5)
+    # FILTRE INTELLIGENT
     est_tunisien = est_article_tunisien(texte_complet)
 
     if not est_tunisien:
@@ -221,7 +169,6 @@ def analyser_article(titre, description, themes_mots):
             if not mot_normalise:
                 continue
 
-            # Recherche avec gestion des pluriels (s? optionnel)
             pattern = r"\b" + re.escape(mot_normalise) + r"s?\b"
 
             if re.search(pattern, texte_complet):
@@ -229,7 +176,6 @@ def analyser_article(titre, description, themes_mots):
                 nb_mots_trouves += 1
                 mots_matches.append(mot_info["mot_original"])
 
-        # Uniquement si le score depasse le seuil
         if nb_mots_trouves > 0 and score >= SEUIL_MINIMUM:
             resultats[theme] = {
                 "score": round(score, 2),
@@ -244,9 +190,7 @@ def analyser_article(titre, description, themes_mots):
 # ANALYSE DE TOUS LES ARTICLES
 # ============================================================
 def analyser_articles_en_base(limite=None, reanalyser=False):
-    """
-    Analyse tous les articles en base.
-    """
+    """Analyse tous les articles en base."""
     from datetime import datetime
     debut = datetime.now()
 
@@ -257,13 +201,11 @@ def analyser_articles_en_base(limite=None, reanalyser=False):
     curseur = conn.cursor(dictionary=True)
 
     try:
-        # 1. Charger les mots-cles
         print("Chargement des mots-cles...")
         themes_mots = charger_mots_par_theme()
         print(f"   {len(themes_mots)} themes charges")
         print()
 
-        # 2. Recuperer les articles
         if reanalyser:
             requete = "SELECT id, titre, description FROM articles"
         else:
@@ -284,9 +226,8 @@ def analyser_articles_en_base(limite=None, reanalyser=False):
 
         if not articles:
             print("Aucun article a analyser.")
-            return {"analyses": 0, "articles_traites": 0}
+            return {"analyses": 0, "articles_traites": 0, "duree": 0}
 
-        # 3. Analyser chaque article
         curseur2 = conn.cursor()
         total_analyses = 0
         total_articles = 0
@@ -310,11 +251,6 @@ def analyser_articles_en_base(limite=None, reanalyser=False):
                             INSERT INTO articles_themes
                                 (article_id, theme, score, nb_mots_trouves, mots_trouves)
                             VALUES (%s, %s, %s, %s, %s)
-                            ON DUPLICATE KEY UPDATE
-                                score = VALUES(score),
-                                nb_mots_trouves = VALUES(nb_mots_trouves),
-                                mots_trouves = VALUES(mots_trouves),
-                                date_analyse = CURRENT_TIMESTAMP
                         """, (
                             art["id"],
                             theme,
@@ -323,8 +259,9 @@ def analyser_articles_en_base(limite=None, reanalyser=False):
                             ", ".join(data["mots"][:20])
                         ))
                         total_analyses += 1
-                    except Error as e:
-                        print(f"   Erreur insertion : {e}")
+                    except Exception:
+                        # Ignorer les erreurs (doublons, etc.)
+                        pass
 
         conn.commit()
 
@@ -341,7 +278,7 @@ def analyser_articles_en_base(limite=None, reanalyser=False):
             "duree": duree
         }
 
-    except Error as e:
+    except Exception as e:
         print(f"Erreur : {e}")
         return None
     finally:
@@ -370,7 +307,16 @@ def stats_themes():
             GROUP BY theme
             ORDER BY nb_articles DESC
         """)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "theme": r["theme"],
+                "nb_articles": int(r["nb_articles"]),
+                "score_moyen": float(r["score_moyen"] or 0),
+                "total_mots": int(r["total_mots"] or 0)
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -385,7 +331,12 @@ def compter_analyses():
     curseur = conn.cursor()
     try:
         curseur.execute("SELECT COUNT(*) FROM articles_themes")
-        return curseur.fetchone()[0]
+        result = curseur.fetchone()
+        if isinstance(result, dict):
+            return int(list(result.values())[0])
+        elif isinstance(result, (list, tuple)):
+            return int(result[0])
+        return int(result)
     finally:
         curseur.close()
         conn.close()

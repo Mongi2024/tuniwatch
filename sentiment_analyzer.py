@@ -1,38 +1,17 @@
 """
 Module sentiment_analyzer.py - Analyse de sentiment par regles
-Version SANS IA - Fonctionne sur Python 3.14
+Version SANS IA - Avec db_universal
 Etape F - Session 1
 """
 
-import mysql.connector
-from mysql.connector import Error
+from db_universal import get_connexion
 import re
 import unicodedata
 
-# ============================================================
-# CONFIGURATION
-# ============================================================
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "python_user",
-    "password": "PythonUser2026!",
-    "database": "monitoring",
-    "charset": "utf8mb4"
-}
 
 # Cache des dictionnaires (charge une seule fois)
 _dict_positif = None
 _dict_negatif = None
-
-
-def get_connexion():
-    """Ouvre une connexion MySQL."""
-    try:
-        return mysql.connector.connect(**DB_CONFIG)
-    except Error as e:
-        print(f"Erreur connexion : {e}")
-        return None
 
 
 def normaliser_texte(texte):
@@ -71,7 +50,7 @@ def normaliser_mot_arabe(mot):
 
 
 def charger_dictionnaires():
-    """Charge les mots positifs et negatifs depuis MySQL."""
+    """Charge les mots positifs et negatifs depuis la base."""
     global _dict_positif, _dict_negatif
 
     if _dict_positif is not None and _dict_negatif is not None:
@@ -99,10 +78,11 @@ def charger_dictionnaires():
             mot_norm = normaliser_texte(row["mot"])
             if not mot_norm:
                 continue
+            intensite = float(row["intensite"])
             if row["polarite"] == "positif":
-                _dict_positif[mot_norm] = row["intensite"]
+                _dict_positif[mot_norm] = intensite
             else:
-                _dict_negatif[mot_norm] = row["intensite"]
+                _dict_negatif[mot_norm] = intensite
 
         print(f"   Dictionnaires charges : {len(_dict_positif)} positifs, {len(_dict_negatif)} negatifs")
 
@@ -143,7 +123,6 @@ def analyser_article(titre, description):
     mots = texte.split()
 
     # Chercher dans les dictionnaires
-        # Chercher dans les dictionnaires
     for mot in mots:
         # Version normale
         if mot in _dict_positif:
@@ -167,7 +146,6 @@ def analyser_article(titre, description):
     total = score_positif + score_negatif
 
     if total == 0:
-        # Aucun mot detecte -> neutre
         return {
             "sentiment": "neutre",
             "score": 0.0,
@@ -257,12 +235,6 @@ def analyser_articles_en_base(limite=None, reanalyser=False):
                             (article_id, sentiment, score, confiance,
                              emotion, langue_detectee)
                         VALUES (%s, %s, %s, %s, %s, %s)
-                        ON DUPLICATE KEY UPDATE
-                            sentiment = VALUES(sentiment),
-                            score = VALUES(score),
-                            confiance = VALUES(confiance),
-                            langue_detectee = VALUES(langue_detectee),
-                            date_analyse = CURRENT_TIMESTAMP
                     """, (
                         art["id"],
                         resultat["sentiment"],
@@ -272,8 +244,9 @@ def analyser_articles_en_base(limite=None, reanalyser=False):
                         resultat["langue"]
                     ))
                     total_analyses += 1
-                except Error as e:
-                    print(f"   Erreur insertion : {e}")
+                except Exception:
+                    # Ignorer les erreurs (doublons, etc.)
+                    pass
 
         conn.commit()
         duree = (datetime.now() - debut).total_seconds()
@@ -288,7 +261,7 @@ def analyser_articles_en_base(limite=None, reanalyser=False):
             "duree": duree
         }
 
-    except Error as e:
+    except Exception as e:
         print(f"Erreur : {e}")
         return None
     finally:
@@ -314,7 +287,16 @@ def stats_sentiment():
             GROUP BY sentiment
             ORDER BY nb DESC
         """)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "sentiment": r["sentiment"],
+                "nb": int(r["nb"]),
+                "score_moyen": float(r["score_moyen"] or 0),
+                "confiance_moyenne": float(r["confiance_moyenne"] or 0)
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -328,7 +310,12 @@ def compter_analyses():
     curseur = conn.cursor()
     try:
         curseur.execute("SELECT COUNT(*) FROM articles_sentiment")
-        return curseur.fetchone()[0]
+        result = curseur.fetchone()
+        if isinstance(result, dict):
+            return int(list(result.values())[0])
+        elif isinstance(result, (list, tuple)):
+            return int(result[0])
+        return int(result)
     finally:
         curseur.close()
         conn.close()

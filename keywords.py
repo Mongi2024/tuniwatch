@@ -1,31 +1,9 @@
 """
 Module keywords.py - Gestion des mots-cles de l'observatoire
-Etape F - Session 1
+Etape F - Session 1 (avec db_universal)
 """
 
-import mysql.connector
-from mysql.connector import Error
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "python_user",
-    "password": "PythonUser2026!",
-    "database": "monitoring",
-    "charset": "utf8mb4"
-}
-
-
-def get_connexion():
-    """Ouvre une connexion MySQL."""
-    try:
-        return mysql.connector.connect(**DB_CONFIG)
-    except Error as e:
-        print(f"Erreur connexion : {e}")
-        return None
+from db_universal import get_connexion
 
 
 # ============================================================
@@ -66,8 +44,18 @@ def charger_mots(theme=None, langue=None, actifs_seulement=True):
         requete += " ORDER BY poids DESC, mot"
 
         curseur.execute(requete, params)
-        return curseur.fetchall()
-    except Error as e:
+        rows = curseur.fetchall()
+        return [
+            {
+                "id": int(r["id"]),
+                "theme": r["theme"],
+                "langue": r["langue"],
+                "mot": r["mot"],
+                "poids": float(r["poids"])
+            }
+            for r in rows
+        ]
+    except Exception as e:
         print(f"Erreur lecture : {e}")
         return []
     finally:
@@ -98,7 +86,7 @@ def lister_themes():
     if conn is None:
         return []
 
-    curseur = conn.cursor()
+    curseur = conn.cursor(dictionary=True)
     try:
         curseur.execute("""
             SELECT theme, COUNT(*) AS nb_mots
@@ -107,8 +95,12 @@ def lister_themes():
             GROUP BY theme
             ORDER BY theme
         """)
-        return [{"theme": t, "nb_mots": n} for t, n in curseur.fetchall()]
-    except Error as e:
+        rows = curseur.fetchall()
+        return [
+            {"theme": r["theme"], "nb_mots": int(r["nb_mots"])}
+            for r in rows
+        ]
+    except Exception as e:
         print(f"Erreur : {e}")
         return []
     finally:
@@ -122,7 +114,7 @@ def stats_par_langue(theme):
     if conn is None:
         return {}
 
-    curseur = conn.cursor()
+    curseur = conn.cursor(dictionary=True)
     try:
         curseur.execute("""
             SELECT langue, COUNT(*) AS nb
@@ -130,8 +122,9 @@ def stats_par_langue(theme):
             WHERE theme = %s AND actif = 1
             GROUP BY langue
         """, (theme,))
-        return {langue: nb for langue, nb in curseur.fetchall()}
-    except Error:
+        rows = curseur.fetchall()
+        return {r["langue"]: int(r["nb"]) for r in rows}
+    except Exception:
         return {}
     finally:
         curseur.close()
@@ -147,8 +140,13 @@ def compter_total():
     curseur = conn.cursor()
     try:
         curseur.execute("SELECT COUNT(*) FROM mots_cles WHERE actif = 1")
-        return curseur.fetchone()[0]
-    except Error:
+        result = curseur.fetchone()
+        if isinstance(result, dict):
+            return int(list(result.values())[0])
+        elif isinstance(result, (list, tuple)):
+            return int(result[0])
+        return int(result)
+    except Exception:
         return 0
     finally:
         curseur.close()
@@ -161,25 +159,38 @@ def compter_total():
 def ajouter_mot(theme, langue, mot, poids=1.0):
     """
     Ajoute un mot-cle. Retourne (succes, message).
-    Si le mot existe deja, il est reactive.
+    Si le mot existe deja, il est reactive et son poids mis a jour.
     """
     conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Base non accessible"
 
     curseur = conn.cursor()
     try:
-        # Essayer d'inserer
-        curseur.execute("""
-            INSERT INTO mots_cles (theme, langue, mot, poids, actif)
-            VALUES (%s, %s, %s, %s, 1)
-            ON DUPLICATE KEY UPDATE
-                poids = VALUES(poids),
-                actif = 1
-        """, (theme, langue, mot, poids))
-        conn.commit()
-        return True, f"Mot '{mot}' ajoute au theme '{theme}'"
-    except Error as e:
+        # Verifier si le mot existe deja
+        curseur.execute(
+            "SELECT id FROM mots_cles WHERE theme = %s AND mot = %s",
+            (theme, mot)
+        )
+        existe = curseur.fetchone()
+
+        if existe:
+            # Mettre a jour
+            curseur.execute(
+                "UPDATE mots_cles SET poids = %s, actif = 1 WHERE theme = %s AND mot = %s",
+                (poids, theme, mot)
+            )
+            conn.commit()
+            return True, f"Mot '{mot}' mis a jour"
+        else:
+            # Inserer
+            curseur.execute("""
+                INSERT INTO mots_cles (theme, langue, mot, poids, actif)
+                VALUES (%s, %s, %s, %s, 1)
+            """, (theme, langue, mot, poids))
+            conn.commit()
+            return True, f"Mot '{mot}' ajoute au theme '{theme}'"
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -190,7 +201,7 @@ def modifier_poids(mot_id, nouveau_poids):
     """Modifie le poids d'un mot."""
     conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Base non accessible"
 
     curseur = conn.cursor()
     try:
@@ -200,7 +211,7 @@ def modifier_poids(mot_id, nouveau_poids):
         )
         conn.commit()
         return True, "Poids modifie"
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -211,7 +222,7 @@ def desactiver_mot(mot_id):
     """Desactive un mot (le rend inactif sans le supprimer)."""
     conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Base non accessible"
 
     curseur = conn.cursor()
     try:
@@ -221,7 +232,7 @@ def desactiver_mot(mot_id):
         )
         conn.commit()
         return True, "Mot desactive"
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -232,7 +243,7 @@ def reactiver_mot(mot_id):
     """Reactive un mot."""
     conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Base non accessible"
 
     curseur = conn.cursor()
     try:
@@ -242,7 +253,7 @@ def reactiver_mot(mot_id):
         )
         conn.commit()
         return True, "Mot reactive"
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -253,14 +264,14 @@ def supprimer_mot(mot_id):
     """Supprime definitivement un mot."""
     conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Base non accessible"
 
     curseur = conn.cursor()
     try:
         curseur.execute("DELETE FROM mots_cles WHERE id = %s", (mot_id,))
         conn.commit()
         return True, "Mot supprime"
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -300,12 +311,6 @@ if __name__ == "__main__":
     for langue, mots in groupes.items():
         if mots:
             print(f"   [{langue}] {', '.join(mots[:3])}...")
-    print()
-
-    # Test 5 : Ajouter un mot test
-    print("5. Test d'ajout d'un mot :")
-    ok, msg = ajouter_mot("violence_femmes", "fr", "test_module", 1.0)
-    print(f"   Resultat : {msg}")
     print()
 
     print("=" * 60)

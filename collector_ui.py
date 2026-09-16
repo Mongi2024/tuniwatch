@@ -1,32 +1,9 @@
 """
 Module collector_ui.py - Fonctions d'interface pour la gestion des sources
-Etape B - Session 2
+Etape B - Session 2 (avec db_universal)
 """
 
-import mysql.connector
-from mysql.connector import Error
-
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "python_user",
-    "password": "PythonUser2026!",
-    "database": "monitoring",
-    "charset": "utf8mb4"
-}
-
-
-def get_connexion():
-    """Ouvre une connexion MySQL."""
-    try:
-        return mysql.connector.connect(**DB_CONFIG)
-    except Error as e:
-        print(f"Erreur connexion : {e}")
-        return None
+from db_universal import get_connexion
 
 
 # ============================================================
@@ -58,7 +35,20 @@ def lister_sources(categorie=None, actives_seulement=False):
         requete += " ORDER BY categorie, nom"
 
         curseur.execute(requete, params)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "id": int(r["id"]),
+                "nom": r["nom"],
+                "categorie": r["categorie"],
+                "langue": r["langue"],
+                "url_site": r["url_site"],
+                "url_rss": r["url_rss"],
+                "actif": int(r["actif"]) if r["actif"] is not None else 0,
+                "date_ajout": str(r["date_ajout"]) if r["date_ajout"] else None
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -70,7 +60,7 @@ def stats_sources():
     if conn is None:
         return {}
 
-    curseur = conn.cursor()
+    curseur = conn.cursor(dictionary=True)
     try:
         curseur.execute("""
             SELECT categorie, COUNT(*) AS nb
@@ -78,7 +68,8 @@ def stats_sources():
             GROUP BY categorie
             ORDER BY categorie
         """)
-        return {cat: nb for cat, nb in curseur.fetchall()}
+        rows = curseur.fetchall()
+        return {r["categorie"]: int(r["nb"]) for r in rows}
     finally:
         curseur.close()
         conn.close()
@@ -96,7 +87,12 @@ def compter_avec_rss():
             SELECT COUNT(*) FROM sources
             WHERE actif = 1 AND url_rss IS NOT NULL AND url_rss != ''
         """)
-        return curseur.fetchone()[0]
+        result = curseur.fetchone()
+        if isinstance(result, dict):
+            return int(list(result.values())[0])
+        elif isinstance(result, (list, tuple)):
+            return int(result[0])
+        return int(result)
     finally:
         curseur.close()
         conn.close()
@@ -117,7 +113,15 @@ def stats_articles_par_source():
             GROUP BY source
             ORDER BY nb_articles DESC
         """)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "source": r["source"],
+                "nb_articles": int(r["nb_articles"]),
+                "dernier_ajout": str(r["dernier_ajout"]) if r["dernier_ajout"] else None
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -130,7 +134,7 @@ def ajouter_source(nom, categorie, langue, url_site, url_rss):
     """Ajoute une nouvelle source. Retourne (succes, message)."""
     conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Base non accessible"
 
     curseur = conn.cursor()
     try:
@@ -140,7 +144,7 @@ def ajouter_source(nom, categorie, langue, url_site, url_rss):
         """, (nom, categorie, langue, url_site, url_rss))
         conn.commit()
         return True, f"Source '{nom}' ajoutee"
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -151,7 +155,7 @@ def modifier_source(source_id, url_rss=None, actif=None, url_site=None):
     """Modifie une source existante."""
     conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Base non accessible"
 
     curseur = conn.cursor()
     try:
@@ -174,12 +178,11 @@ def modifier_source(source_id, url_rss=None, actif=None, url_site=None):
             return False, "Aucun champ a modifier"
 
         params.append(source_id)
-
         requete = f"UPDATE sources SET {', '.join(champs)} WHERE id = %s"
         curseur.execute(requete, params)
         conn.commit()
         return True, "Source mise a jour"
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -190,14 +193,14 @@ def supprimer_source(source_id, nom):
     """Supprime une source."""
     conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Base non accessible"
 
     curseur = conn.cursor()
     try:
         curseur.execute("DELETE FROM sources WHERE id = %s", (source_id,))
         conn.commit()
         return True, f"Source '{nom}' supprimee"
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -219,19 +222,16 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
 
-    # Stats par categorie
     print("1. Sources par categorie :")
     for cat, nb in sorted(stats_sources().items()):
         print(f"   - {cat:15} : {nb} sources")
     print()
 
-    # Sources avec RSS
     print(f"2. Sources avec RSS : {compter_avec_rss()}")
     print()
 
-    # Articles par source (top 10)
-    print("3. Top 10 sources (par articles) :")
-    stats = stats_articles_par_source()[:10]
+    print("3. Top 5 sources (par articles) :")
+    stats = stats_articles_par_source()[:5]
     for s in stats:
         print(f"   - {s['source'][:30]:30} : {s['nb_articles']} articles")
     print()

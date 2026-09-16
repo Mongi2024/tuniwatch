@@ -1,40 +1,16 @@
 """
 Module alert_detector.py - Detection automatique d'anomalies
-Etape H - Session 1 (avec fonction articles lies)
+Etape H - Session 1 (avec db_universal)
 """
 
-import mysql.connector
-from mysql.connector import Error
-from datetime import datetime, timedelta
-
-
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "python_user",
-    "password": "PythonUser2026!",
-    "database": "monitoring",
-    "charset": "utf8mb4"
-}
-
-
-def get_connexion():
-    try:
-        return mysql.connector.connect(**DB_CONFIG)
-    except Error as e:
-        print(f"Erreur : {e}")
-        return None
+from db_universal import get_connexion
 
 
 # ============================================================
 # DETECTION DES ANOMALIES
 # ============================================================
-
 def detecter_pics_mentions():
-    """
-    Detecte les pics d'articles sur un theme.
-    Compare le nombre d'articles des 3 derniers jours vs les 7 jours precedents.
-    """
+    """Detecte les pics d'articles sur un theme."""
     conn = get_connexion()
     if conn is None:
         return []
@@ -51,7 +27,7 @@ def detecter_pics_mentions():
             WHERE a.date_ajout >= DATE_SUB(NOW(), INTERVAL 3 DAY)
             GROUP BY at.theme
         """)
-        recents = {r["theme"]: r["nb_recents"] for r in curseur.fetchall()}
+        recents = {r["theme"]: int(r["nb_recents"]) for r in curseur.fetchall()}
 
         # Articles precedents (7 jours avant)
         curseur.execute("""
@@ -62,13 +38,11 @@ def detecter_pics_mentions():
                                     AND DATE_SUB(NOW(), INTERVAL 3 DAY)
             GROUP BY at.theme
         """)
-        anciens = {r["theme"]: r["nb_anciens"] for r in curseur.fetchall()}
+        anciens = {r["theme"]: int(r["nb_anciens"]) for r in curseur.fetchall()}
 
         # Comparer
         for theme, nb_recent in recents.items():
             nb_ancien = anciens.get(theme, 0)
-
-            # Seuil : au moins 5 articles recents ET 2x plus que la periode precedente
             if nb_recent >= 5 and nb_ancien > 0:
                 ratio = nb_recent / max(nb_ancien, 1)
                 if ratio >= 2.0:
@@ -78,7 +52,7 @@ def detecter_pics_mentions():
                         "mot_cle": theme
                     })
 
-    except Error as e:
+    except Exception as e:
         print(f"Erreur pics : {e}")
     finally:
         curseur.close()
@@ -88,9 +62,7 @@ def detecter_pics_mentions():
 
 
 def detecter_sentiment_negatif():
-    """
-    Detecte les themes avec un sentiment tres negatif.
-    """
+    """Detecte les themes avec un sentiment tres negatif."""
     conn = get_connexion()
     if conn is None:
         return []
@@ -103,24 +75,23 @@ def detecter_sentiment_negatif():
             SELECT 
                 at.theme,
                 COUNT(DISTINCT at.article_id) AS nb_articles,
-                ROUND(AVG(s.score), 2) AS score_moyen,
-                SUM(CASE WHEN s.sentiment = 'negatif' THEN 1 ELSE 0 END) AS nb_negatifs
+                AVG(s.score) AS score_moyen
             FROM articles_themes at
             JOIN articles_sentiment s ON s.article_id = at.article_id
             WHERE s.sentiment = 'negatif'
             GROUP BY at.theme
-            HAVING score_moyen < -0.5 AND nb_articles >= 2
+            HAVING AVG(s.score) < -0.5 AND COUNT(DISTINCT at.article_id) >= 2
         """)
 
         for row in curseur.fetchall():
             alertes.append({
                 "niveau": "critique",
                 "message": f"Sentiment tres negatif sur '{row['theme']}' : "
-                           f"score {row['score_moyen']:.2f} sur {row['nb_articles']} articles",
+                           f"score {float(row['score_moyen']):.2f} sur {int(row['nb_articles'])} articles",
                 "mot_cle": row["theme"]
             })
 
-    except Error as e:
+    except Exception as e:
         print(f"Erreur sentiment : {e}")
     finally:
         curseur.close()
@@ -130,9 +101,7 @@ def detecter_sentiment_negatif():
 
 
 def detecter_baisse_activite():
-    """
-    Detecte les themes qui ont une chute d'activite.
-    """
+    """Detecte les themes qui ont une chute d'activite."""
     conn = get_connexion()
     if conn is None:
         return []
@@ -148,7 +117,7 @@ def detecter_baisse_activite():
             WHERE a.date_ajout >= DATE_SUB(NOW(), INTERVAL 7 DAY)
             GROUP BY at.theme
         """)
-        recents = {r["theme"]: r["nb_recents"] for r in curseur.fetchall()}
+        recents = {r["theme"]: int(r["nb_recents"]) for r in curseur.fetchall()}
 
         curseur.execute("""
             SELECT at.theme, COUNT(DISTINCT at.article_id) AS nb_anciens
@@ -158,7 +127,7 @@ def detecter_baisse_activite():
                                     AND DATE_SUB(NOW(), INTERVAL 7 DAY)
             GROUP BY at.theme
         """)
-        anciens = {r["theme"]: r["nb_anciens"] for r in curseur.fetchall()}
+        anciens = {r["theme"]: int(r["nb_anciens"]) for r in curseur.fetchall()}
 
         for theme, nb_ancien in anciens.items():
             if nb_ancien >= 5:
@@ -171,7 +140,7 @@ def detecter_baisse_activite():
                         "mot_cle": theme
                     })
 
-    except Error as e:
+    except Exception as e:
         print(f"Erreur baisse : {e}")
     finally:
         curseur.close()
@@ -181,9 +150,7 @@ def detecter_baisse_activite():
 
 
 def detecter_volume_global():
-    """
-    Detecte un pic global de collecte.
-    """
+    """Detecte un pic global de collecte."""
     conn = get_connexion()
     if conn is None:
         return []
@@ -204,8 +171,8 @@ def detecter_volume_global():
 
         if len(jours) >= 2:
             for i in range(1, len(jours)):
-                nb_avant = jours[i-1]["nb"]
-                nb_apres = jours[i]["nb"]
+                nb_avant = int(jours[i-1]["nb"])
+                nb_apres = int(jours[i]["nb"])
 
                 if nb_avant >= 20 and nb_apres >= nb_avant * 3:
                     alertes.append({
@@ -215,7 +182,7 @@ def detecter_volume_global():
                         "mot_cle": "global"
                     })
 
-    except Error as e:
+    except Exception as e:
         print(f"Erreur volume : {e}")
     finally:
         curseur.close()
@@ -227,7 +194,6 @@ def detecter_volume_global():
 # ============================================================
 # SAUVEGARDE ET GESTION DES ALERTES
 # ============================================================
-
 def sauvegarder_alerte(alerte):
     """Sauvegarde une alerte si elle n'existe pas deja (meme message dans les 24h)."""
     conn = get_connexion()
@@ -244,7 +210,7 @@ def sauvegarder_alerte(alerte):
         """, (alerte["message"],))
 
         if curseur.fetchone():
-            return False  # Deja existante
+            return False
 
         curseur.execute("""
             INSERT INTO alertes (message, niveau, mot_cle, lue)
@@ -253,7 +219,7 @@ def sauvegarder_alerte(alerte):
 
         conn.commit()
         return True
-    except Error as e:
+    except Exception as e:
         print(f"Erreur insertion : {e}")
         return False
     finally:
@@ -268,25 +234,21 @@ def lancer_detection_complete():
 
     toutes_alertes = []
 
-    # 1. Pics de mentions
     print("1. Detection des pics de mentions...")
     pics = detecter_pics_mentions()
     toutes_alertes.extend(pics)
     print(f"   {len(pics)} alerte(s) detectee(s)")
 
-    # 2. Sentiment negatif
     print("2. Detection du sentiment negatif...")
     sentiments = detecter_sentiment_negatif()
     toutes_alertes.extend(sentiments)
     print(f"   {len(sentiments)} alerte(s) detectee(s)")
 
-    # 3. Baisse d'activite
     print("3. Detection des baisses d'activite...")
     baisses = detecter_baisse_activite()
     toutes_alertes.extend(baisses)
     print(f"   {len(baisses)} alerte(s) detectee(s)")
 
-    # 4. Volume global
     print("4. Detection du volume global...")
     volumes = detecter_volume_global()
     toutes_alertes.extend(volumes)
@@ -295,7 +257,6 @@ def lancer_detection_complete():
     print()
     print(f"TOTAL : {len(toutes_alertes)} alerte(s) detectee(s)")
 
-    # Sauvegarder
     print()
     print("Sauvegarde en base...")
     nb_sauvees = 0
@@ -315,7 +276,6 @@ def lancer_detection_complete():
 # ============================================================
 # LECTURE DES ALERTES
 # ============================================================
-
 def lister_alertes(lues=None, niveau=None, limite=100):
     """Liste les alertes avec filtres optionnels."""
     conn = get_connexion()
@@ -339,7 +299,18 @@ def lister_alertes(lues=None, niveau=None, limite=100):
         params.append(limite)
 
         curseur.execute(requete, params)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "id": int(r["id"]),
+                "message": r["message"],
+                "niveau": r["niveau"],
+                "mot_cle": r["mot_cle"],
+                "date_creation": str(r["date_creation"]) if r["date_creation"] else None,
+                "lue": int(r["lue"])
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -359,7 +330,7 @@ def marquer_lue(alerte_id, lue=True):
         )
         conn.commit()
         return True
-    except Error as e:
+    except Exception as e:
         print(f"Erreur : {e}")
         return False
     finally:
@@ -378,7 +349,7 @@ def supprimer_alerte(alerte_id):
         curseur.execute("DELETE FROM alertes WHERE id = %s", (alerte_id,))
         conn.commit()
         return True
-    except Error:
+    except Exception:
         return False
     finally:
         curseur.close()
@@ -396,7 +367,7 @@ def supprimer_toutes_alertes():
         curseur.execute("DELETE FROM alertes")
         conn.commit()
         return True
-    except Error:
+    except Exception:
         return False
     finally:
         curseur.close()
@@ -419,22 +390,25 @@ def stats_alertes():
                 SUM(CASE WHEN niveau = 'attention' THEN 1 ELSE 0 END) AS attention
             FROM alertes
         """)
-        return curseur.fetchone()
+        result = curseur.fetchone()
+        if result:
+            return {
+                "total": int(result.get("total") or 0),
+                "non_lues": int(result.get("non_lues") or 0),
+                "critiques": int(result.get("critiques") or 0),
+                "attention": int(result.get("attention") or 0)
+            }
+        return {"total": 0, "non_lues": 0, "critiques": 0, "attention": 0}
     finally:
         curseur.close()
         conn.close()
 
 
 # ============================================================
-# NOUVEAU : ARTICLES LIES A UNE ALERTE
+# ARTICLES LIES A UNE ALERTE
 # ============================================================
-
 def get_articles_lies_alerte(alerte):
-    """
-    Retourne les articles lies a une alerte.
-    Pour les alertes de sentiment : articles du theme avec sentiment negatif.
-    Pour les autres : articles recents du theme.
-    """
+    """Retourne les articles lies a une alerte."""
     conn = get_connexion()
     if conn is None:
         return []
@@ -444,37 +418,39 @@ def get_articles_lies_alerte(alerte):
         mot_cle = alerte.get("mot_cle", "")
         message = alerte.get("message", "").lower()
 
-        # Cas 1 : Alerte sur le sentiment (chercher articles negatifs du theme)
+        # Cas 1 : Alerte sentiment
         if "sentiment" in message:
             curseur.execute("""
                 SELECT DISTINCT
-                    a.id,
-                    a.titre,
-                    a.source,
-                    a.url,
-                    a.date_publication,
-                    s.sentiment,
-                    s.score AS score_sentiment,
+                    a.id, a.titre, a.source, a.url, a.date_publication,
+                    s.sentiment, s.score AS score_sentiment,
                     at.score AS score_theme
                 FROM articles a
                 JOIN articles_themes at ON at.article_id = a.id
                 JOIN articles_sentiment s ON s.article_id = a.id
-                WHERE at.theme = %s
-                  AND s.sentiment = 'negatif'
+                WHERE at.theme = %s AND s.sentiment = 'negatif'
                 ORDER BY s.score ASC
                 LIMIT 20
             """, (mot_cle,))
-            return curseur.fetchall()
+            rows = curseur.fetchall()
+            return [
+                {
+                    "id": int(r["id"]),
+                    "titre": r["titre"],
+                    "source": r["source"],
+                    "url": r["url"],
+                    "sentiment": r["sentiment"],
+                    "score_sentiment": float(r["score_sentiment"] or 0),
+                    "score_theme": float(r["score_theme"] or 0)
+                }
+                for r in rows
+            ]
 
-        # Cas 2 : Alerte sur un pic de mentions
+        # Cas 2 : Pic de mentions
         if "pic" in message:
             curseur.execute("""
                 SELECT DISTINCT
-                    a.id,
-                    a.titre,
-                    a.source,
-                    a.url,
-                    a.date_publication,
+                    a.id, a.titre, a.source, a.url, a.date_publication,
                     at.score AS score_theme
                 FROM articles a
                 JOIN articles_themes at ON at.article_id = a.id
@@ -483,17 +459,23 @@ def get_articles_lies_alerte(alerte):
                 ORDER BY a.date_ajout DESC
                 LIMIT 20
             """, (mot_cle,))
-            return curseur.fetchall()
+            rows = curseur.fetchall()
+            return [
+                {
+                    "id": int(r["id"]),
+                    "titre": r["titre"],
+                    "source": r["source"],
+                    "url": r["url"],
+                    "score_theme": float(r["score_theme"] or 0)
+                }
+                for r in rows
+            ]
 
         # Cas 3 : Baisse d'activite
         if "baisse" in message:
             curseur.execute("""
                 SELECT DISTINCT
-                    a.id,
-                    a.titre,
-                    a.source,
-                    a.url,
-                    a.date_publication,
+                    a.id, a.titre, a.source, a.url, a.date_publication,
                     at.score AS score_theme
                 FROM articles a
                 JOIN articles_themes at ON at.article_id = a.id
@@ -501,26 +483,41 @@ def get_articles_lies_alerte(alerte):
                 ORDER BY a.date_ajout DESC
                 LIMIT 20
             """, (mot_cle,))
-            return curseur.fetchall()
+            rows = curseur.fetchall()
+            return [
+                {
+                    "id": int(r["id"]),
+                    "titre": r["titre"],
+                    "source": r["source"],
+                    "url": r["url"],
+                    "score_theme": float(r["score_theme"] or 0)
+                }
+                for r in rows
+            ]
 
-        # Cas 4 : Alerte globale - derniers articles
+        # Cas 4 : Global
         if mot_cle == "global":
             curseur.execute("""
-                SELECT id, titre, source, url, date_publication
+                SELECT id, titre, source, url
                 FROM articles
                 ORDER BY date_ajout DESC
                 LIMIT 20
             """)
-            return curseur.fetchall()
+            rows = curseur.fetchall()
+            return [
+                {
+                    "id": int(r["id"]),
+                    "titre": r["titre"],
+                    "source": r["source"],
+                    "url": r["url"]
+                }
+                for r in rows
+            ]
 
-        # Cas par defaut : articles du theme
+        # Cas par defaut
         curseur.execute("""
             SELECT DISTINCT
-                a.id,
-                a.titre,
-                a.source,
-                a.url,
-                a.date_publication,
+                a.id, a.titre, a.source, a.url, a.date_publication,
                 at.score AS score_theme
             FROM articles a
             JOIN articles_themes at ON at.article_id = a.id
@@ -528,9 +525,19 @@ def get_articles_lies_alerte(alerte):
             ORDER BY a.date_ajout DESC
             LIMIT 20
         """, (mot_cle,))
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "id": int(r["id"]),
+                "titre": r["titre"],
+                "source": r["source"],
+                "url": r["url"],
+                "score_theme": float(r["score_theme"] or 0)
+            }
+            for r in rows
+        ]
 
-    except Error as e:
+    except Exception as e:
         print(f"Erreur get_articles_lies_alerte : {e}")
         return []
     finally:
@@ -547,36 +554,20 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
 
-    # Lancer la detection
-    resultat = lancer_detection_complete()
-
-    print()
-    print("=" * 60)
-    print("STATISTIQUES DES ALERTES")
-    print("=" * 60)
-    print()
-
+    # Statistiques
+    print("Statistiques actuelles :")
     stats = stats_alertes()
-    print(f"   Total alertes    : {stats.get('total', 0)}")
-    print(f"   Non lues         : {stats.get('non_lues', 0)}")
-    print(f"   Critiques        : {stats.get('critiques', 0)}")
-    print(f"   Attention        : {stats.get('attention', 0)}")
+    print(f"   Total : {stats.get('total', 0)}")
+    print(f"   Non lues : {stats.get('non_lues', 0)}")
     print()
 
-    # Test de la nouvelle fonction
-    print("=" * 60)
-    print("TEST DE get_articles_lies_alerte")
-    print("=" * 60)
-    print()
-
-    alertes = lister_alertes(limite=2)
+    # Test articles lies
+    alertes = lister_alertes(limite=3)
+    print(f"Test articles lies ({len(alertes)} alertes) :")
     for alerte in alertes:
-        print(f"Alerte : {alerte['message'][:70]}")
         articles = get_articles_lies_alerte(alerte)
-        print(f"   -> {len(articles)} article(s) lie(s)")
-        for art in articles[:3]:
-            print(f"      - {art.get('titre', '')[:60]}...")
-        print()
+        print(f"   - {alerte['message'][:60]}... -> {len(articles)} articles")
+    print()
 
     print("=" * 60)
     print("TEST TERMINE")

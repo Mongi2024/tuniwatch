@@ -1,35 +1,13 @@
 """
 Module stats_themes_sentiments.py - Statistiques croisees themes x sentiments
-Etape F - Session 2
+Etape F - Session 2 (avec db_universal)
 """
 
-import mysql.connector
-from mysql.connector import Error
-
-
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "python_user",
-    "password": "PythonUser2026!",
-    "database": "monitoring",
-    "charset": "utf8mb4"
-}
-
-
-def get_connexion():
-    try:
-        return mysql.connector.connect(**DB_CONFIG)
-    except Error as e:
-        print(f"Erreur connexion : {e}")
-        return None
+from db_universal import get_connexion
 
 
 def stats_themes_avec_sentiment():
-    """
-    Statistiques croisees : nombre d'articles par theme ET par sentiment.
-    Retourne une liste de dicts.
-    """
+    """Statistiques croisees : nombre d'articles par theme ET par sentiment."""
     conn = get_connexion()
     if conn is None:
         return []
@@ -46,16 +24,22 @@ def stats_themes_avec_sentiment():
             GROUP BY at.theme, s.sentiment
             ORDER BY at.theme, s.sentiment
         """)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "theme": r["theme"],
+                "sentiment": r["sentiment"],
+                "nb": int(r["nb"])
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
 
 
 def stats_par_theme_detail():
-    """
-    Pour chaque theme : nb articles, score moyen sentiment, repartition.
-    """
+    """Pour chaque theme : nb articles, score moyen sentiment, repartition."""
     conn = get_connexion()
     if conn is None:
         return []
@@ -66,7 +50,7 @@ def stats_par_theme_detail():
             SELECT 
                 at.theme,
                 COUNT(DISTINCT at.article_id) AS nb_articles,
-                ROUND(AVG(s.score), 2) AS score_moyen_sentiment,
+                AVG(s.score) AS score_moyen_sentiment,
                 SUM(CASE WHEN s.sentiment = 'positif' THEN 1 ELSE 0 END) AS nb_positifs,
                 SUM(CASE WHEN s.sentiment = 'neutre' THEN 1 ELSE 0 END) AS nb_neutres,
                 SUM(CASE WHEN s.sentiment = 'negatif' THEN 1 ELSE 0 END) AS nb_negatifs
@@ -75,7 +59,18 @@ def stats_par_theme_detail():
             GROUP BY at.theme
             ORDER BY nb_articles DESC
         """)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "theme": r["theme"],
+                "nb_articles": int(r["nb_articles"]),
+                "score_moyen_sentiment": float(r["score_moyen_sentiment"] or 0),
+                "nb_positifs": int(r["nb_positifs"] or 0),
+                "nb_neutres": int(r["nb_neutres"] or 0),
+                "nb_negatifs": int(r["nb_negatifs"] or 0)
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -100,7 +95,15 @@ def stats_par_langue_theme():
             GROUP BY at.theme, s.langue_detectee
             ORDER BY at.theme, nb DESC
         """)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "theme": r["theme"],
+                "langue": r["langue"],
+                "nb": int(r["nb"])
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -126,7 +129,15 @@ def evolution_sentiment_par_theme(theme):
             GROUP BY DATE(a.date_ajout), s.sentiment
             ORDER BY jour
         """, (theme,))
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "jour": str(r["jour"]),
+                "sentiment": r["sentiment"],
+                "nb": int(r["nb"])
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
