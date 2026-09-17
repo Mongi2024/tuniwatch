@@ -1,6 +1,6 @@
 """
 Page Themes - Analyse des themes detectes dans les articles
-Etape D - Session 1
+Etape D - Session 1 (avec db_universal + fix PostgreSQL)
 """
 import stats_themes_sentiments
 import streamlit as st
@@ -31,13 +31,13 @@ auth.require_login()
 # PALETTE DE COULEURS PAR THEME
 # ============================================================
 COULEURS_THEMES = {
-    "violence_femmes": "#e74c3c",       # Rouge
-    "discours_haine": "#c0392b",         # Rouge fonce
-    "presence_femmes": "#9b59b6",        # Violet
-    "presence_handicapes": "#3498db",    # Bleu
-    "presence_jeunes": "#f39c12",        # Orange
-    "equilibre_politique": "#2c3e50",    # Bleu fonce
-    "equilibre_regional": "#27ae60"      # Vert
+    "violence_femmes": "#e74c3c",
+    "discours_haine": "#c0392b",
+    "presence_femmes": "#9b59b6",
+    "presence_handicapes": "#3498db",
+    "presence_jeunes": "#f39c12",
+    "equilibre_politique": "#2c3e50",
+    "equilibre_regional": "#27ae60"
 }
 
 EMOJIS_THEMES = {
@@ -70,31 +70,53 @@ def get_stats_globales():
                 MAX(score) AS score_max
             FROM articles_themes
         """)
-        return curseur.fetchone()
+        result = curseur.fetchone()
+        if result:
+            # Conversion pour compatibilite PostgreSQL/SQLite/MySQL
+            return {
+                "total_analyses": int(result.get("total_analyses") or 0),
+                "total_articles_classes": int(result.get("total_articles_classes") or 0),
+                "total_themes": int(result.get("total_themes") or 0),
+                "score_moyen": float(result.get("score_moyen") or 0),
+                "score_max": float(result.get("score_max") or 0)
+            }
+        return {}
     finally:
         curseur.close()
         conn.close()
 
 
 def get_stats_par_theme():
-    """Statistiques detaillees par theme."""
+    """Statistiques detaillees par theme (avec ROUND en Python)."""
     conn = analyzer.get_connexion()
     if conn is None:
         return []
     curseur = conn.cursor(dictionary=True)
     try:
+        # Pas de ROUND dans le SQL (compatible PostgreSQL + MySQL + SQLite)
         curseur.execute("""
             SELECT 
                 theme,
                 COUNT(DISTINCT article_id) AS nb_articles,
-                ROUND(AVG(score), 2) AS score_moyen,
-                ROUND(MAX(score), 2) AS score_max,
+                AVG(score) AS score_moyen,
+                MAX(score) AS score_max,
                 SUM(nb_mots_trouves) AS total_mots
             FROM articles_themes
             GROUP BY theme
             ORDER BY nb_articles DESC
         """)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        # ROUND en Python
+        return [
+            {
+                "theme": r["theme"],
+                "nb_articles": int(r["nb_articles"]),
+                "score_moyen": round(float(r["score_moyen"] or 0), 2),
+                "score_max": round(float(r["score_max"] or 0), 2),
+                "total_mots": int(r["total_mots"] or 0)
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -122,7 +144,20 @@ def get_top_articles(limite=15):
             ORDER BY at.score DESC
             LIMIT %s
         """, (limite,))
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "id": int(r["id"]),
+                "titre": r["titre"],
+                "source": r["source"],
+                "url": r["url"],
+                "theme": r["theme"],
+                "score": float(r["score"] or 0),
+                "mots_trouves": r["mots_trouves"],
+                "date_publication": str(r["date_publication"]) if r["date_publication"] else None
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -150,7 +185,19 @@ def get_articles_par_theme(theme, limite=20):
             ORDER BY at.score DESC
             LIMIT %s
         """, (theme, limite))
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "id": int(r["id"]),
+                "titre": r["titre"],
+                "source": r["source"],
+                "url": r["url"],
+                "score": float(r["score"] or 0),
+                "mots_trouves": r["mots_trouves"],
+                "date_publication": str(r["date_publication"]) if r["date_publication"] else None
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -278,13 +325,11 @@ if stats_themes:
     if top_articles:
         for i, art in enumerate(top_articles, 1):
             emoji = EMOJIS_THEMES.get(art["theme"], "🌐")
-            couleur = COULEURS_THEMES.get(art["theme"], "#95a5a6")
 
             with st.container():
                 col1, col2 = st.columns([4, 1])
 
                 with col1:
-                    # Titre avec emoji du theme
                     if art["url"]:
                         st.markdown(f"**{i}. {emoji} [{art['titre']}]({art['url']})**")
                     else:
@@ -293,7 +338,7 @@ if stats_themes:
                     st.caption(
                         f"📰 **{art['source']}** • "
                         f"🏷️ `{art['theme']}` • "
-                        f"🔑 {art['mots_trouves'][:80]}"
+                        f"🔑 {(art['mots_trouves'] or '')[:80]}"
                     )
 
                 with col2:
@@ -329,7 +374,7 @@ if stats_themes:
                         st.markdown(f"**{i}.** {art['titre']}")
                     st.caption(
                         f"📰 {art['source']} • "
-                        f"🔑 {art['mots_trouves'][:100]}"
+                        f"🔑 {(art['mots_trouves'] or '')[:100]}"
                     )
 
                 with col2:
@@ -355,7 +400,6 @@ with col1:
         st.rerun()
 
 with col2:
-    # Export CSV
     if stats_themes:
         csv = df_themes.to_csv(index=False).encode("utf-8")
         st.download_button(
@@ -370,122 +414,123 @@ with col3:
     st.caption(f"📅 {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
 st.markdown("---")
+
 # ============================================================
 # SECTION 7 : SENTIMENTS PAR THEME
 # ============================================================
 st.markdown("---")
 st.subheader("😊 Sentiments par thème")
 
-detail = stats_themes_sentiments.stats_par_theme_detail()
+try:
+    detail = stats_themes_sentiments.stats_par_theme_detail()
 
-if detail:
-    df_detail = pd.DataFrame(detail)
+    if detail:
+        df_detail = pd.DataFrame(detail)
 
-    # --- Graphique 1 : Sentiment par thème (barres empilées) ---
-    col1, col2 = st.columns([1, 1])
+        col1, col2 = st.columns([1, 1])
 
-    with col1:
-        st.markdown("#### Répartition des sentiments")
+        with col1:
+            st.markdown("#### Répartition des sentiments")
 
-        df_stack = df_detail[["theme", "nb_positifs", "nb_neutres", "nb_negatifs"]].copy()
-        df_stack = df_stack.melt(
-            id_vars="theme",
-            var_name="sentiment",
-            value_name="nb"
-        )
-        df_stack["sentiment"] = df_stack["sentiment"].replace({
-            "nb_positifs": "Positifs",
-            "nb_neutres": "Neutres",
-            "nb_negatifs": "Négatifs"
-        })
+            df_stack = df_detail[["theme", "nb_positifs", "nb_neutres", "nb_negatifs"]].copy()
+            df_stack = df_stack.melt(
+                id_vars="theme",
+                var_name="sentiment",
+                value_name="nb"
+            )
+            df_stack["sentiment"] = df_stack["sentiment"].replace({
+                "nb_positifs": "Positifs",
+                "nb_neutres": "Neutres",
+                "nb_negatifs": "Négatifs"
+            })
 
-        fig_stack = px.bar(
-            df_stack,
-            x="theme",
-            y="nb",
-            color="sentiment",
-            color_discrete_map={
-                "Positifs": "#27ae60",
-                "Neutres": "#f39c12",
-                "Négatifs": "#e74c3c"
-            },
-            barmode="stack",
-            labels={"theme": "Thème", "nb": "Nombre d'articles", "sentiment": "Sentiment"}
-        )
-        fig_stack.update_layout(
-            height=400,
-            xaxis_tickangle=-30,
-            margin=dict(l=20, r=20, t=20, b=100)
-        )
-        st.plotly_chart(fig_stack, use_container_width=True)
+            fig_stack = px.bar(
+                df_stack,
+                x="theme",
+                y="nb",
+                color="sentiment",
+                color_discrete_map={
+                    "Positifs": "#27ae60",
+                    "Neutres": "#f39c12",
+                    "Négatifs": "#e74c3c"
+                },
+                barmode="stack",
+                labels={"theme": "Thème", "nb": "Nombre d'articles", "sentiment": "Sentiment"}
+            )
+            fig_stack.update_layout(
+                height=400,
+                xaxis_tickangle=-30,
+                margin=dict(l=20, r=20, t=20, b=100)
+            )
+            st.plotly_chart(fig_stack, use_container_width=True)
 
-    with col2:
-        st.markdown("#### Score de sentiment par thème")
-        st.caption("Positif (+1) / Neutre (0) / Négatif (-1)")
+        with col2:
+            st.markdown("#### Score de sentiment par thème")
+            st.caption("Positif (+1) / Neutre (0) / Négatif (-1)")
 
-        df_score = df_detail.sort_values("score_moyen_sentiment")
-        
-        def couleur_score(score):
-            if score > 0.1:
-                return "#27ae60"
-            elif score < -0.1:
-                return "#e74c3c"
-            return "#f39c12"
+            df_score = df_detail.sort_values("score_moyen_sentiment")
 
-        df_score["couleur"] = df_score["score_moyen_sentiment"].apply(couleur_score)
+            def couleur_score(score):
+                if score > 0.1:
+                    return "#27ae60"
+                elif score < -0.1:
+                    return "#e74c3c"
+                return "#f39c12"
 
-        fig_score = go.Figure(go.Bar(
-            x=df_score["score_moyen_sentiment"],
-            y=df_score["theme"],
-            orientation="h",
-            marker_color=df_score["couleur"],
-            text=df_score["score_moyen_sentiment"].round(2),
-            textposition="outside"
-        ))
-        fig_score.update_layout(
-            height=400,
-            xaxis_title="Score moyen",
-            yaxis_title="",
-            xaxis=dict(range=[-1, 1]),
-            margin=dict(l=20, r=20, t=20, b=20)
-        )
-        st.plotly_chart(fig_score, use_container_width=True)
+            df_score["couleur"] = df_score["score_moyen_sentiment"].apply(couleur_score)
 
-    # --- Tableau détaillé ---
-    st.markdown("#### Tableau récapitulatif")
+            fig_score = go.Figure(go.Bar(
+                x=df_score["score_moyen_sentiment"],
+                y=df_score["theme"],
+                orientation="h",
+                marker_color=df_score["couleur"],
+                text=df_score["score_moyen_sentiment"].round(2),
+                textposition="outside"
+            ))
+            fig_score.update_layout(
+                height=400,
+                xaxis_title="Score moyen",
+                yaxis_title="",
+                xaxis=dict(range=[-1, 1]),
+                margin=dict(l=20, r=20, t=20, b=20)
+            )
+            st.plotly_chart(fig_score, use_container_width=True)
 
-    df_table = df_detail.copy()
-    df_table.columns = ["Thème", "Articles", "Score sentiment", "🟢 Positifs", "🟡 Neutres", "🔴 Négatifs"]
-    df_table = df_table.sort_values("Articles", ascending=False)
+        st.markdown("#### Tableau récapitulatif")
 
-    st.dataframe(df_table, use_container_width=True, hide_index=True)
+        df_table = df_detail.copy()
+        df_table.columns = ["Thème", "Articles", "Score sentiment", "🟢 Positifs", "🟡 Neutres", "🔴 Négatifs"]
+        df_table = df_table.sort_values("Articles", ascending=False)
 
-    # --- Langues par thème ---
-    st.markdown("#### Répartition linguistique par thème")
+        st.dataframe(df_table, use_container_width=True, hide_index=True)
 
-    langue_data = stats_themes_sentiments.stats_par_langue_theme()
+        st.markdown("#### Répartition linguistique par thème")
 
-    if langue_data:
-        df_langue = pd.DataFrame(langue_data)
+        langue_data = stats_themes_sentiments.stats_par_langue_theme()
 
-        fig_langue = px.bar(
-            df_langue,
-            x="theme",
-            y="nb",
-            color="langue",
-            barmode="group",
-            text="nb",
-            labels={"theme": "Thème", "nb": "Articles", "langue": "Langue"},
-            color_discrete_map={"fr": "#3498db", "ar": "#e67e22", "inconnu": "#95a5a6"}
-        )
-        fig_langue.update_layout(
-            height=400,
-            xaxis_tickangle=-30,
-            margin=dict(l=20, r=20, t=20, b=100)
-        )
-        st.plotly_chart(fig_langue, use_container_width=True)
-else:
-    st.info("Aucune donnée de sentiment liée aux thèmes.")
-    st.caption("💡 Lancez `analyser_sentiment.py` puis relancez l'analyse des thèmes.")
+        if langue_data:
+            df_langue = pd.DataFrame(langue_data)
+
+            fig_langue = px.bar(
+                df_langue,
+                x="theme",
+                y="nb",
+                color="langue",
+                barmode="group",
+                text="nb",
+                labels={"theme": "Thème", "nb": "Articles", "langue": "Langue"},
+                color_discrete_map={"fr": "#3498db", "ar": "#e67e22", "inconnu": "#95a5a6"}
+            )
+            fig_langue.update_layout(
+                height=400,
+                xaxis_tickangle=-30,
+                margin=dict(l=20, r=20, t=20, b=100)
+            )
+            st.plotly_chart(fig_langue, use_container_width=True)
+    else:
+        st.info("Aucune donnée de sentiment liée aux thèmes.")
+except Exception as e:
+    st.warning(f"Impossible de charger les sentiments : {e}")
+
 st.caption("Page Thèmes — Version 0.1 | Observatoire des médias tunisiens")
 style.footer()
