@@ -1,37 +1,10 @@
 """
-Module db.py - Connexion et operations MySQL
-Etape C - Session 6
+Module db.py - Connexion et operations (universel MySQL/PostgreSQL/SQLite)
+Etape C - Session 6 (avec db_universal)
 """
 
-import mysql.connector
-from mysql.connector import Error
+from db_universal import get_connexion
 from datetime import datetime
-
-# ============================================================
-# CONFIGURATION DE LA CONNEXION
-# ============================================================
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "python_user",
-    "password": "PythonUser2026!",
-    "database": "monitoring",
-    "charset": "utf8mb4",
-    "use_unicode": True
-}
-
-
-def get_connexion():
-    """
-    Ouvre une connexion a MySQL.
-    Retourne un objet connexion ou None si erreur.
-    """
-    try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        return conn
-    except Error as e:
-        print(f"Erreur connexion MySQL : {e}")
-        return None
 
 
 def tester_connexion():
@@ -50,12 +23,6 @@ def sauvegarder_articles(articles):
     """
     Sauvegarde une liste d'articles dans la table 'articles'.
     Ignore les doublons (meme URL).
-
-    Args:
-        articles : liste de dictionnaires
-
-    Returns:
-        Nombre d'articles reellement inseres
     """
     if not articles:
         return 0
@@ -79,18 +46,29 @@ def sauvegarder_articles(articles):
             mot_cle = (article.get("mot_cle") or "")[:200]
             date_pub_str = article.get("date") or ""
 
-            # Convertir la date au format MySQL
+            # Convertir la date
             date_pub = None
             if date_pub_str:
                 try:
-                    # Format ISO : 2026-09-14T15:30:00Z
                     date_pub = datetime.strptime(
                         date_pub_str[:19], "%Y-%m-%dT%H:%M:%S"
                     )
                 except ValueError:
                     date_pub = None
 
-            # Insertion (ignorer si URL existe deja)
+            # Verifier si URL existe deja
+            try:
+                curseur.execute(
+                    "SELECT id FROM articles WHERE url = %s",
+                    (url,)
+                )
+                if curseur.fetchone():
+                    ignores += 1
+                    continue
+            except Exception:
+                pass
+
+            # Insertion
             try:
                 curseur.execute("""
                     INSERT INTO articles
@@ -100,15 +78,14 @@ def sauvegarder_articles(articles):
                 """, (titre, source, auteur, date_pub,
                       url, description, mot_cle))
                 inseres += 1
-            except mysql.connector.IntegrityError:
-                # URL en double → ignore
+            except Exception:
                 ignores += 1
 
         conn.commit()
         print(f"OK - {inseres} articles inseres, {ignores} doublons ignores")
         return inseres
 
-    except Error as e:
+    except Exception as e:
         conn.rollback()
         print(f"Erreur insertion : {e}")
         return 0
@@ -129,8 +106,13 @@ def compter_articles():
     curseur = conn.cursor()
     try:
         curseur.execute("SELECT COUNT(*) FROM articles")
-        return curseur.fetchone()[0]
-    except Error:
+        result = curseur.fetchone()
+        if isinstance(result, dict):
+            return int(list(result.values())[0])
+        elif isinstance(result, (list, tuple)):
+            return int(result[0])
+        return int(result)
+    except Exception:
         return 0
     finally:
         curseur.close()
@@ -156,8 +138,9 @@ def recuperer_articles(limite=50):
             ORDER BY date_ajout DESC
             LIMIT %s
         """, (limite,))
-        return curseur.fetchall()
-    except Error as e:
+        rows = curseur.fetchall()
+        return rows if rows else []
+    except Exception as e:
         print(f"Erreur lecture : {e}")
         return []
     finally:
@@ -176,7 +159,7 @@ def vider_articles():
         curseur.execute("DELETE FROM articles")
         conn.commit()
         return True
-    except Error:
+    except Exception:
         return False
     finally:
         curseur.close()
@@ -195,9 +178,9 @@ if __name__ == "__main__":
     # Test 1 : connexion
     print("1. Test de connexion...")
     if tester_connexion():
-        print("   OK - MySQL accessible")
+        print("   OK - Base accessible")
     else:
-        print("   ECHEC - Verifier MySQL")
+        print("   ECHEC - Verifier la connexion")
         exit()
 
     print()
@@ -209,26 +192,12 @@ if __name__ == "__main__":
 
     print()
 
-    # Test 3 : insertion d'un article test
-    print("3. Insertion d'un article test...")
-    article_test = [{
-        "titre": "Article de test depuis db.py",
-        "source": "Test",
-        "auteur": "Khadraoui Mongi",
-        "date": "2026-09-15T10:00:00Z",
-        "url": f"https://test.example.com/article-{datetime.now().strftime('%Y%m%d%H%M%S')}",
-        "description": "Ceci est un article de test pour valider la connexion MySQL.",
-        "mot_cle": "test"
-    }]
-    inseres = sauvegarder_articles(article_test)
-    print(f"   {inseres} article(s) insere(s)")
-
-    print()
-
-    # Test 4 : nouveau comptage
-    print("4. Nouveau comptage...")
-    nb = compter_articles()
-    print(f"   {nb} articles maintenant")
+    # Test 3 : recuperation
+    print("3. Derniers articles...")
+    articles = recuperer_articles(3)
+    for a in articles:
+        titre = a.get("titre", "")[:60] if isinstance(a, dict) else str(a)
+        print(f"   - {titre}")
 
     print()
     print("=" * 60)
