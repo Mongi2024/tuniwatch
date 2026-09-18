@@ -1,6 +1,6 @@
 """
 Page Sentiments - Analyse visuelle des sentiments
-Etape F - Session 2
+Etape F - Session 2 (version PostgreSQL compatible)
 """
 
 import streamlit as st
@@ -50,22 +50,32 @@ EMOJIS_SENTIMENT = {
 # FONCTIONS DE LECTURE
 # ============================================================
 def get_stats_globales():
-    """Stats globales de sentiment."""
+    """Stats globales de sentiment (compatible PostgreSQL)."""
     conn = sentiment_analyzer.get_connexion()
     if conn is None:
         return {}
     curseur = conn.cursor(dictionary=True)
     try:
+        # Pas de ROUND dans le SQL (compatible PostgreSQL/MySQL/SQLite)
         curseur.execute("""
             SELECT 
                 COUNT(*) AS total,
                 SUM(CASE WHEN sentiment = 'positif' THEN 1 ELSE 0 END) AS positifs,
                 SUM(CASE WHEN sentiment = 'neutre' THEN 1 ELSE 0 END) AS neutres,
                 SUM(CASE WHEN sentiment = 'negatif' THEN 1 ELSE 0 END) AS negatifs,
-                ROUND(AVG(score), 2) AS score_moyen
+                AVG(score) AS score_moyen
             FROM articles_sentiment
         """)
-        return curseur.fetchone()
+        result = curseur.fetchone()
+        if result:
+            return {
+                "total": int(result.get("total") or 0),
+                "positifs": int(result.get("positifs") or 0),
+                "neutres": int(result.get("neutres") or 0),
+                "negatifs": int(result.get("negatifs") or 0),
+                "score_moyen": round(float(result.get("score_moyen") or 0), 2)
+            }
+        return {}
     finally:
         curseur.close()
         conn.close()
@@ -87,7 +97,15 @@ def get_stats_par_langue():
             GROUP BY langue_detectee, sentiment
             ORDER BY langue_detectee, sentiment
         """)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "langue": r["langue"],
+                "sentiment": r["sentiment"],
+                "nb": int(r["nb"])
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -115,7 +133,19 @@ def get_top_articles(sentiment, limite=10):
             ORDER BY ABS(s.score) DESC, s.confiance DESC
             LIMIT %s
         """, (sentiment, limite))
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "id": int(r["id"]),
+                "titre": r["titre"],
+                "source": r["source"],
+                "url": r["url"],
+                "score": float(r["score"] or 0),
+                "confiance": float(r["confiance"] or 0),
+                "langue_detectee": r["langue_detectee"]
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
@@ -139,7 +169,15 @@ def get_evolution_temporelle():
             GROUP BY DATE(a.date_ajout), s.sentiment
             ORDER BY jour, s.sentiment
         """)
-        return curseur.fetchall()
+        rows = curseur.fetchall()
+        return [
+            {
+                "jour": str(r["jour"]),
+                "sentiment": r["sentiment"],
+                "nb": int(r["nb"])
+            }
+            for r in rows
+        ]
     finally:
         curseur.close()
         conn.close()
