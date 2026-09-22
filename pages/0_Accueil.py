@@ -1,6 +1,6 @@
 """
 Page Accueil - Presentation du projet TuniWatch
-Etape E - Session 1
+Version 1.1 - Visuel premium
 """
 
 import streamlit as st
@@ -27,133 +27,77 @@ style.appliquer_style()
 auth.require_login()
 
 # ============================================================
-# EN-TETE
+# EN-TETE PREMIUM
 # ============================================================
-col1, col2 = st.columns([1, 4])
-
-with col1:
-    st.markdown("""
-    <div style="text-align: center; padding: 1rem;">
-        <div style="font-size: 5rem;">🇹🇳</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.title("TuniWatch")
-    st.markdown("### Observatoire des médias tunisiens")
-    st.caption("Analyse automatique de la représentation et des discours médiatiques")
-
-st.markdown("---")
+style.page_header(
+    titre="TuniWatch",
+    icone="🇹🇳",
+    description="Observatoire des médias tunisiens — Analyse automatique de la représentation et des discours médiatiques",
+    badge="v1.0"
+)
 
 # ============================================================
 # PRESENTATION
 # ============================================================
-st.markdown("""
-## 📖 À propos
+style.section_title("📖", "À propos", "Notre mission et nos sujets d'analyse")
 
-**TuniWatch** est un observatoire automatique qui analyse en continu 
-les contenus des médias tunisiens (presse, radios, TV) et des réseaux sociaux.
+st.markdown(
+    """
+    **TuniWatch** est un observatoire automatique qui analyse en continu 
+    les contenus des médias tunisiens (presse, radios, TV) et des réseaux sociaux.
+    
+    Nous mesurons, documentons et rendons visible la représentation médiatique 
+    des **sujets sociétaux** en Tunisie.
+    """
+)
 
-### 🎯 Notre mission
-
-Mesurer, documenter et rendre visible la représentation médiatique des 
-**sujets sociétaux** en Tunisie :
-""")
+st.markdown("#### 🎯 Nos 4 thèmes principaux")
 
 col1, col2, col3, col4 = st.columns(4)
 
-themes = [
-    ("⚖️", "Violence femmes", "Violence conjugale, harcèlement, féminicide"),
-    ("👩", "Présence femmes", "Parité, représentation politique et économique"),
-    ("🗺️", "Équilibre régional", "Couverture équitable des régions"),
-    ("🏛️", "Équilibre politique", "Représentation des partis et personnalités"),
-]
-
 with col1:
-    st.markdown("""
-    <div style="padding: 1rem; background: #f8f9fa; border-radius: 10px; height: 150px;">
-        <div style="font-size: 2rem;">⚖️</div>
-        <b>Violence femmes</b><br>
-        <small style="color: #666;">Violence conjugale, harcèlement</small>
-    </div>
-    """, unsafe_allow_html=True)
+    style.kpi_card("⚖️", "Violence femmes", "Suivi", couleur="#e74c3c")
+    st.caption("Violence conjugale, harcèlement, féminicide")
 
 with col2:
-    st.markdown("""
-    <div style="padding: 1rem; background: #f8f9fa; border-radius: 10px; height: 150px;">
-        <div style="font-size: 2rem;">👩</div>
-        <b>Présence femmes</b><br>
-        <small style="color: #666;">Parité, représentation</small>
-    </div>
-    """, unsafe_allow_html=True)
+    style.kpi_card("👩", "Présence femmes", "Suivi", couleur="#9b59b6")
+    st.caption("Parité, représentation politique et économique")
 
 with col3:
-    st.markdown("""
-    <div style="padding: 1rem; background: #f8f9fa; border-radius: 10px; height: 150px;">
-        <div style="font-size: 2rem;">🗺️</div>
-        <b>Équilibre régional</b><br>
-        <small style="color: #666;">Couverture équitable des régions</small>
-    </div>
-    """, unsafe_allow_html=True)
+    style.kpi_card("🗺️", "Équilibre régional", "Suivi", couleur="#27ae60")
+    st.caption("Couverture équitable des régions")
 
 with col4:
-    st.markdown("""
-    <div style="padding: 1rem; background: #f8f9fa; border-radius: 10px; height: 150px;">
-        <div style="font-size: 2rem;">🏛️</div>
-        <b>Équilibre politique</b><br>
-        <small style="color: #666;">Partis et personnalités</small>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("---")
+    style.kpi_card("🏛️", "Équilibre politique", "Suivi", couleur="#2c3e50")
+    st.caption("Représentation des partis et personnalités")
 
 # ============================================================
 # METHODOLOGIE
 # ============================================================
-st.markdown("## 🔬 Méthodologie")
+style.section_title("🔬", "Méthodologie", "Comment nous collectons et analysons les données")
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.markdown("""
-    ### 1️⃣ Collecte
-    Articles récupérés automatiquement depuis :
-    - 📰 Presse tunisienne (RSS)
-    - 📻 Radios (11 radios nationales et régionales)
-    - 📺 TV, réseaux sociaux
-    """)
+    style.kpi_card("1️⃣", "Collecte", "Auto", couleur="#3498db")
+    st.caption("📰 Presse RSS\n📻 11 Radios\n📺 TV & réseaux sociaux")
 
 with col2:
-    st.markdown("""
-    ### 2️⃣ Analyse
-    Traitement multilingue :
-    - 🇫🇷 Français
-    - 🇹🇳 Arabe standard (فصحى)
-    - 🗣️ Arabe tunisien (دارجة)
-    - 🔤 Arabizi
-    """)
+    style.kpi_card("2️⃣", "Analyse", "Multi", couleur="#9b59b6")
+    st.caption("🇫🇷 Français\n🇹🇳 Arabe standard\n🗣️ Arabe tunisien")
 
 with col3:
-    st.markdown("""
-    ### 3️⃣ Classification
-    456 mots-clés répartis sur 7 thèmes détectent automatiquement la présence des sujets surveillés.
-    """)
+    style.kpi_card("3️⃣", "Classification", "456", couleur="#f39c12")
+    st.caption("Mots-clés répartis sur 7 thèmes")
 
 with col4:
-    st.markdown("""
-    ### 4️⃣ Visualisation
-    Statistiques exploitables :
-    - Chiffres par thème
-    - Évolution temporelle
-    - Comparaison médias
-    """)
-
-st.markdown("---")
+    style.kpi_card("4️⃣", "Visualisation", "Stats", couleur="#27ae60")
+    st.caption("Chiffres, évolution, comparaison")
 
 # ============================================================
 # CHIFFRES CLES
 # ============================================================
-st.markdown("## 📊 Chiffres clés")
+style.section_title("📊", "Chiffres clés", "Données actuelles de l'observatoire")
 
 try:
     import analyzer
@@ -178,73 +122,84 @@ try:
     conn.close()
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("📰 Articles collectés", f"{nb_articles:,}".replace(",", " "))
-    col2.metric("📡 Sources actives", nb_sources)
-    col3.metric("🔑 Mots-clés", nb_mots)
-    col4.metric("🎯 Analyses effectuées", nb_analyses)
+
+    with col1:
+        style.kpi_card("📰", "Articles collectés",
+                       f"{nb_articles:,}".replace(",", " "),
+                       couleur="#e70013")
+
+    with col2:
+        style.kpi_card("📡", "Sources actives", nb_sources, couleur="#3498db")
+
+    with col3:
+        style.kpi_card("🔑", "Mots-clés", nb_mots, couleur="#f39c12")
+
+    with col4:
+        style.kpi_card("🎯", "Analyses effectuées", nb_analyses, couleur="#27ae60")
 
 except Exception as e:
     st.warning(f"Impossible de charger les statistiques : {e}")
 
-st.markdown("---")
-
 # ============================================================
 # LIMITES ET ETHIQUE
 # ============================================================
-st.markdown("## ⚠️ Limites et éthique")
+style.section_title("⚠️", "Limites et éthique", "Notre engagement de transparence")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("""
-    ### 🎯 Limites
-    
-    - Les analyses reflètent **uniquement** les sources collectées
-    - Les scores sont **indicatifs** et non des vérités absolues
-    - La détection automatique peut générer des **faux positifs**
-    - Le contexte **humain** reste indispensable pour interpréter
-    """)
+    st.markdown("##### 🎯 Limites")
+    st.markdown(
+        """
+        - Les analyses reflètent **uniquement** les sources collectées
+        - Les scores sont **indicatifs** et non des vérités absolues
+        - La détection automatique peut générer des **faux positifs**
+        - Le contexte **humain** reste indispensable pour interpréter
+        """
+    )
 
 with col2:
-    st.markdown("""
-    ### ⚖️ Éthique
-    
-    - **Aucune donnée personnelle** n'est collectée
-    - Tous les articles sont **publics**
-    - L'observatoire **respecte les CGU** des sources
-    - Les résultats sont **transparents** et **vérifiables**
-    """)
-
-st.markdown("---")
+    st.markdown("##### ⚖️ Éthique")
+    st.markdown(
+        """
+        - **Aucune donnée personnelle** n'est collectée
+        - Tous les articles sont **publics**
+        - L'observatoire **respecte les CGU** des sources
+        - Les résultats sont **transparents** et **vérifiables**
+        """
+    )
 
 # ============================================================
-# CREDITS
+# CREDITS ET CONTACT
 # ============================================================
-st.markdown("## 👤 Contact")
+style.section_title("👤", "Contact", "Informations sur le projet")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("""
-    **Développé par** : Khadraoui Mongi  
-    **Année** : 2026  
-    **Version** : 1.0  
-    """)
+    st.markdown(
+        """
+        **Développé par** : Khadraoui Mongi  
+        **Année** : 2026  
+        **Version** : 1.0  
+        """
+    )
 
 with col2:
-    st.markdown(f"""
-    **Dernière mise à jour** : {datetime.now().strftime('%d/%m/%Y')}  
-    **Statut** : 🟢 En développement actif  
-    """)
-
-st.markdown("---")
+    st.markdown(
+        f"""
+        **Dernière mise à jour** : {datetime.now().strftime('%d/%m/%Y')}  
+        **Statut** : 🟢 En développement actif  
+        """
+    )
 
 # ============================================================
 # CALL TO ACTION
 # ============================================================
-st.success("""
-💡 **Bienvenue sur TuniWatch !** Utilisez le menu à gauche pour explorer les analyses.
-""")
+st.markdown("---")
+st.success(
+    "💡 **Bienvenue sur TuniWatch !** Utilisez le menu à gauche pour explorer les analyses."
+)
 
 # Footer
 style.footer()
