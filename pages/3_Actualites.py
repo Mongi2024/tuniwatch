@@ -1,6 +1,6 @@
 """
 Page Actualités - Récupération des news en temps réel
-Version 3.0 - Filtres médias + sujets + recherche rapide
+Version 3.1 - Recherche live + Tous les médias fonctionnel
 """
 
 import streamlit as st
@@ -40,41 +40,13 @@ C_ROUGE = "#ef4444"
 # SUJETS PRÉDÉFINIS
 # ============================================================
 SUJETS_PREDEFINIS = [
-    "Tunisie",
-    "intelligence artificielle",
-    "python",
-    "cybersecurite",
-    "reseaux sociaux",
-    "innovation",
-    "economie",
-    "sport",
-    "politique",
-    "sante",
-    "education",
-    "environnement",
-    "climat",
-    "agriculture",
-    "technologie",
-    "culture",
-    "cinema",
-    "musique",
-    "emploi",
-    "startup",
-    "fintech",
-    "blockchain",
-    "crypto",
-    "5G",
-    "telecom",
-    "energie",
-    "elections",
-    "droits des femmes",
-    "jeunesse",
-    "handicap",
-    "immigration",
-    "terrorisme",
-    "corruption",
-    "justice",
-    "transport",
+    "Tunisie", "intelligence artificielle", "python", "cybersecurite",
+    "reseaux sociaux", "innovation", "economie", "sport", "politique",
+    "sante", "education", "environnement", "climat", "agriculture",
+    "technologie", "culture", "cinema", "musique", "emploi", "startup",
+    "fintech", "blockchain", "crypto", "5G", "telecom", "energie",
+    "elections", "droits des femmes", "jeunesse", "handicap",
+    "immigration", "terrorisme", "corruption", "justice", "transport",
     "tourisme",
 ]
 
@@ -144,16 +116,13 @@ def kpi_card(icone, label, valeur, tendance=None, couleur=None):
         'overflow: hidden;'
         '">'
         '<div style="'
-        'position: absolute; '
-        'top: 0; left: 0; right: 0; '
+        'position: absolute; top: 0; left: 0; right: 0; '
         'height: 4px; '
         f'background: {couleur}; '
         'border-radius: 20px 20px 0 0;'
         '"></div>'
         '<div style="'
-        'display: flex; '
-        'align-items: center; '
-        'gap: 12px; '
+        'display: flex; align-items: center; gap: 12px; '
         'margin-bottom: 16px;'
         '">'
         '<div style="'
@@ -166,22 +135,15 @@ def kpi_card(icone, label, valeur, tendance=None, couleur=None):
         f'{icone}'
         '</div>'
         '<div style="'
-        'font-size: 0.72rem; '
-        'color: #64748b; '
-        'font-weight: 700; '
-        'text-transform: uppercase; '
-        'letter-spacing: 0.8px;'
+        'font-size: 0.72rem; color: #64748b; font-weight: 700; '
+        'text-transform: uppercase; letter-spacing: 0.8px;'
         '">'
         f'{label}'
         '</div>'
         '</div>'
         '<div style="'
-        'font-size: 2.2rem; '
-        'font-weight: 800; '
-        'color: #0f172a; '
-        'line-height: 1; '
-        'letter-spacing: -1px; '
-        'margin-bottom: 12px;'
+        'font-size: 2.2rem; font-weight: 800; color: #0f172a; '
+        'line-height: 1; letter-spacing: -1px; margin-bottom: 12px;'
         '">'
         f'{valeur}'
         '</div>'
@@ -195,14 +157,9 @@ def section_titre(icone, titre, sous_titre=""):
     html = (
         '<div style="margin: 40px 0 20px 0;">'
         '<h2 style="'
-        'margin: 0; '
-        'font-size: 1.35rem; '
-        'color: #0f172a; '
-        'font-weight: 800; '
-        'display: flex; '
-        'align-items: center; '
-        'gap: 12px; '
-        'letter-spacing: -0.3px;'
+        'margin: 0; font-size: 1.35rem; color: #0f172a; '
+        'font-weight: 800; display: flex; align-items: center; '
+        'gap: 12px; letter-spacing: -0.3px;'
         '">'
         f'<span style="font-size: 1.5rem;">{icone}</span>'
         f'<span>{titre}</span>'
@@ -211,10 +168,8 @@ def section_titre(icone, titre, sous_titre=""):
     if sous_titre:
         html += (
             '<p style="'
-            'margin: 6px 0 0 44px; '
-            'color: #64748b; '
-            'font-size: 0.85rem; '
-            'font-weight: 500;'
+            'margin: 6px 0 0 44px; color: #64748b; '
+            'font-size: 0.85rem; font-weight: 500;'
             '">'
             f'{sous_titre}'
             '</p>'
@@ -296,7 +251,7 @@ def carte_article(titre, source, date, description, url, image_url):
 style.page_header(
     titre="Actualités",
     icone="📰",
-    description="Recherche intelligente par média, sujet ou thème — Sources NewsAPI + base TuniWatch",
+    description="Recherche intelligente par média, sujet ou thème — Sources NewsAPI",
     badge="LIVE"
 )
 
@@ -309,7 +264,7 @@ if not est_configure():
     st.stop()
 
 # ============================================================
-# CHARGEMENT DES MÉDIAS DE LA BASE
+# CHARGEMENT DES MÉDIAS
 # ============================================================
 try:
     with st.spinner("Chargement des médias..."):
@@ -326,7 +281,6 @@ section_titre("🎛️", "Filtres de recherche", "Recherche intelligente avec d�
 
 col1, col2, col3 = st.columns([2, 1, 1])
 
-# ---------- TYPE DE RECHERCHE ----------
 with col1:
     type_recherche = st.radio(
         "🎯 Type de recherche",
@@ -335,12 +289,13 @@ with col1:
         key="news_type_recherche"
     )
 
-# ---------- SUJET / MÉDIA ----------
+# ---------- VARIABLES DE SÉLECTION ----------
 mots_cles = []
 
+# ---------- MÉDIA ----------
 if type_recherche == "📺 Par média":
-    # --- Recherche rapide média ---
     st.markdown("##### 🔎 Recherche rapide dans les médias")
+
     recherche_media = st.text_input(
         "Tapez 2 lettres ou plus pour filtrer",
         placeholder="Ex: tun, mos, afr...",
@@ -349,7 +304,6 @@ if type_recherche == "📺 Par média":
     )
 
     if medias_ok and medias_db:
-        # Filtre la liste selon la recherche
         if recherche_media and len(recherche_media) >= 2:
             medias_filtres = [m for m in medias_db
                               if recherche_media.lower() in m.lower()]
@@ -363,18 +317,23 @@ if type_recherche == "📺 Par média":
                 index=0,
                 key="news_media_select"
             )
-            if media_choisi != "🌐 Tous les médias":
+
+            # CORRECTION : "Tous les médias" lance recherche Tunisie
+            if media_choisi == "🌐 Tous les médias":
+                mots_cles = ["Tunisie"]
+            else:
                 mots_cles = [media_choisi]
         else:
             st.warning(f"Aucun média trouvé pour « {recherche_media} »")
-            media_choisi = "🌐 Tous les médias"
+            mots_cles = ["Tunisie"]
     else:
-        st.warning("⚠️ Impossible de charger les médias depuis la base.")
-        media_choisi = "🌐 Tous les médias"
+        st.warning("⚠️ Impossible de charger les médias.")
+        mots_cles = ["Tunisie"]
 
+# ---------- SUJET ----------
 elif type_recherche == "🔍 Par sujet / thème":
-    # --- Recherche rapide sujet ---
     st.markdown("##### 🔎 Recherche rapide dans les sujets")
+
     recherche_sujet = st.text_input(
         "Tapez 2 lettres ou plus pour filtrer",
         placeholder="Ex: pol, spo, ia...",
@@ -398,8 +357,10 @@ elif type_recherche == "🔍 Par sujet / thème":
         mots_cles = [sujet_choisi]
     else:
         st.warning(f"Aucun sujet trouvé pour « {recherche_sujet} »")
+        mots_cles = ["Tunisie"]
 
-else:  # Recherche libre
+# ---------- RECHERCHE LIBRE ----------
+else:
     sujet_perso = st.text_input(
         "✏️ Recherche libre (séparez plusieurs mots par des virgules)",
         placeholder="Ex: climat, énergie, santé",
@@ -410,7 +371,7 @@ else:  # Recherche libre
     else:
         mots_cles = ["Tunisie"]
 
-# ---------- NOMBRE D'ARTICLES ----------
+# ---------- PARAMÈTRES ----------
 with col2:
     nb_articles = st.slider(
         "📊 Nombre d'articles",
@@ -418,7 +379,6 @@ with col2:
         key="news_nb"
     )
 
-# ---------- PÉRIODE ----------
 with col3:
     jours = st.selectbox(
         "📅 Période",
@@ -440,12 +400,8 @@ with col_btn2:
         st.cache_data.clear()
         st.success("Cache vidé !")
 
-# ---------- INFO FILTRE ACTIF ----------
-if not mots_cles:
-    st.warning("⚠️ Sélectionnez un média ou un sujet pour lancer la recherche.")
-    st.stop()
-
-st.info(f"🎯 **Recherche active** : {', '.join(mots_cles)}")
+# ---------- INFO ----------
+st.info(f"🎯 **Recherche active** : {', '.join(mots_cles) if mots_cles else '—'}")
 
 # ============================================================
 # SECTION 2 : RÉCUPÉRATION DES NEWS
@@ -521,7 +477,7 @@ if recherche_titre:
 st.caption(f"**{len(df_filtre)}** article(s) affiché(s) après filtrage")
 
 # ============================================================
-# SECTION 5 : LISTE DES ARTICLES EN CARTES
+# SECTION 5 : ARTICLES
 # ============================================================
 section_titre("📄", "Articles", "Cliquez sur un titre pour ouvrir l'article")
 
