@@ -1,6 +1,6 @@
 """
 Page Analyse - Dashboard premium TuniWatch
-Version 4.0 - Style inspiré des dashboards modernes
+Version 4.1 - Correction affichage SVG dans KPI
 """
 
 import streamlit as st
@@ -101,7 +101,7 @@ st.markdown("""
         transform: translateY(-2px);
     }
 
-    /* MINI-TITRES des sous-sections (### dans le code) */
+    /* MINI-TITRES des sous-sections */
     div[data-testid="stMarkdownContainer"] h5 {
         color: #0f172a !important;
         font-weight: 700 !important;
@@ -126,100 +126,75 @@ st.markdown("""
 # ============================================================
 
 def kpi_avec_sparkline(icone, label, valeur, tendance, couleur, spark_data=None):
-    """Carte KPI avec mini-courbe en bas (inspiré image 1)."""
+    """Carte KPI premium (sans sparkline SVG — Streamlit filtre les balises SVG)."""
     
-    # Construire la sparkline en SVG
-    spark_svg = ""
-    if spark_data and len(spark_data) > 1:
-        max_v = max(spark_data) if max(spark_data) > 0 else 1
-        min_v = min(spark_data)
-        range_v = max_v - min_v if max_v != min_v else 1
-        width, height = 200, 40
-        points = []
-        for i, v in enumerate(spark_data):
-            x = (i / (len(spark_data) - 1)) * width
-            y = height - ((v - min_v) / range_v) * height
-            points.append(f"{x:.1f},{y:.1f}")
-        path_d = "M " + " L ".join(points)
-        
-        # Couleur en rgba pour le fill
-        r = int(couleur[1:3], 16)
-        g = int(couleur[3:5], 16)
-        b = int(couleur[5:7], 16)
-        
-        spark_svg = f'''
-        <svg width="100%" height="40" viewBox="0 0 {width} {height}"
-             preserveAspectRatio="none" style="margin-top: 12px;">
-            <defs>
-                <linearGradient id="grad_{label.replace(' ', '')}" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="rgba({r},{g},{b},0.25)"/>
-                    <stop offset="100%" stop-color="rgba({r},{g},{b},0)"/>
-                </linearGradient>
-            </defs>
-            <path d="{path_d} L {width},{height} L 0,{height} Z"
-                  fill="url(#grad_{label.replace(' ', '')})"/>
-            <path d="{path_d}" fill="none"
-                  stroke="{couleur}" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        '''
+    # Déterminer si c'est une hausse ou une baisse
+    is_positive = tendance.startswith("+")
+    arrow = "↑" if is_positive else "↓"
+    trend_color = couleur if is_positive else "#ef4444"
     
     html = f'''
     <div style="
         background: #ffffff;
         border-radius: 20px;
-        padding: 22px 24px 16px 24px;
+        padding: 24px 26px;
         box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06),
                     0 1px 3px rgba(15, 23, 42, 0.04);
         border: 1px solid rgba(15, 23, 42, 0.03);
         height: 100%;
         min-height: 175px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
         transition: all 0.25s ease;
+        position: relative;
+        overflow: hidden;
     ">
-        <div>
+        <div style="
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: {couleur};
+            border-radius: 20px 20px 0 0;
+        "></div>
+        
+        <div style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        ">
             <div style="
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                margin-bottom: 14px;
-            ">
-                <div style="
-                    width: 36px; height: 36px;
-                    background: {couleur}15;
-                    border-radius: 10px;
-                    display: flex; align-items: center; justify-content: center;
-                    font-size: 1.1rem;
-                ">{icone}</div>
-                <div style="
-                    font-size: 0.75rem;
-                    color: #64748b;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.8px;
-                ">{label}</div>
-            </div>
-            <div style="
-                font-size: 2.2rem;
-                font-weight: 800;
-                color: #0f172a;
-                line-height: 1;
-                letter-spacing: -0.5px;
-            ">{valeur}</div>
-            <div style="
-                display: inline-block;
+                width: 42px; height: 42px;
                 background: {couleur}15;
-                color: {couleur};
-                padding: 3px 10px;
-                border-radius: 20px;
-                font-size: 0.72rem;
+                border-radius: 12px;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 1.25rem;
+            ">{icone}</div>
+            <div style="
+                font-size: 0.75rem;
+                color: #64748b;
                 font-weight: 700;
-                margin-top: 10px;
-            ">↑ {tendance}</div>
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+            ">{label}</div>
         </div>
-        {spark_svg}
+        
+        <div style="
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+        ">{valeur}</div>
+        
+        <div style="
+            display: inline-block;
+            background: {trend_color}15;
+            color: {trend_color};
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        ">{arrow} {tendance}</div>
     </div>
     '''
     st.markdown(html, unsafe_allow_html=True)
@@ -283,7 +258,7 @@ if not donnees_ok:
 spark_data = [item["nb"] for item in evolution] if evolution else [0] * 10
 
 # ============================================================
-# SECTION 1 : KPI avec sparklines
+# SECTION 1 : KPI PREMIUM
 # ============================================================
 section_titre("📊", "Vue d'ensemble", "Indicateurs clés de la période analysée")
 
@@ -341,9 +316,11 @@ with col1:
             height=340, showlegend=False, hovermode="x unified",
             margin=dict(l=10, r=20, t=20, b=10),
             plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(showgrid=False, showline=False, tickfont=dict(size=11, color="#94a3b8")),
+            xaxis=dict(showgrid=False, showline=False,
+                       tickfont=dict(size=11, color="#94a3b8")),
             yaxis=dict(showgrid=True, gridcolor="rgba(15,23,42,0.04)",
-                       showline=False, tickfont=dict(size=11, color="#94a3b8")),
+                       showline=False,
+                       tickfont=dict(size=11, color="#94a3b8")),
             font=dict(family="Inter, sans-serif")
         )
         st.plotly_chart(fig, use_container_width=True)
@@ -413,8 +390,10 @@ with col1:
             plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
             font=dict(family="Inter, sans-serif"),
             xaxis=dict(showgrid=True, gridcolor="rgba(15,23,42,0.04)",
-                       showline=False, tickfont=dict(size=11, color="#94a3b8")),
-            yaxis=dict(showgrid=False, tickfont=dict(size=12, color="#0f172a")),
+                       showline=False,
+                       tickfont=dict(size=11, color="#94a3b8")),
+            yaxis=dict(showgrid=False,
+                       tickfont=dict(size=12, color="#0f172a")),
             bargap=0.4
         )
         st.plotly_chart(fig, use_container_width=True)
