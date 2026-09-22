@@ -1,6 +1,6 @@
 """
 Page Analyse - Dashboard premium TuniWatch
-Version 4.1 - Correction affichage SVG dans KPI
+Version 4.2 - Correction affichage cartes KPI (concaténation)
 """
 
 import streamlit as st
@@ -61,30 +61,21 @@ EMOJIS_THEMES = {
 # ============================================================
 st.markdown("""
 <style>
-    /* FOND DE PAGE (inspiré image 1) */
     .stApp {
         background: linear-gradient(180deg, #eef7fa 0%, #e8f4f8 100%) !important;
     }
-    
-    /* Barre supérieure de Streamlit transparente */
     header[data-testid="stHeader"] {
         background: rgba(255, 255, 255, 0.6) !important;
         backdrop-filter: blur(10px);
     }
-
-    /* CONTENEUR PRINCIPAL : padding généreux */
     .main .block-container {
         padding: 2rem 2.5rem 3rem 2.5rem !important;
         max-width: 100% !important;
     }
-
-    /* TITRES */
     h1, h2, h3, h4, h5 {
         font-family: 'Inter', -apple-system, sans-serif !important;
         color: #0f172a !important;
     }
-
-    /* CARTES DES GRAPHIQUES */
     div[data-testid="stPlotlyChart"] {
         background: #ffffff !important;
         border-radius: 20px !important;
@@ -93,30 +84,13 @@ st.markdown("""
                     0 1px 3px rgba(15, 23, 42, 0.04) !important;
         border: 1px solid rgba(15, 23, 42, 0.03) !important;
         margin-bottom: 20px !important;
-        transition: all 0.25s ease !important;
     }
-    div[data-testid="stPlotlyChart"]:hover {
-        box-shadow: 0 8px 32px rgba(15, 23, 42, 0.1),
-                    0 2px 6px rgba(15, 23, 42, 0.05) !important;
-        transform: translateY(-2px);
-    }
-
-    /* MINI-TITRES des sous-sections */
     div[data-testid="stMarkdownContainer"] h5 {
         color: #0f172a !important;
         font-weight: 700 !important;
         font-size: 0.95rem !important;
         margin: 0 0 16px 0 !important;
         letter-spacing: 0.2px !important;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    /* CAPTIONS */
-    .stCaption, div[data-testid="stCaptionContainer"] {
-        color: #64748b !important;
-        font-size: 0.8rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -126,100 +100,112 @@ st.markdown("""
 # ============================================================
 
 def kpi_avec_sparkline(icone, label, valeur, tendance, couleur, spark_data=None):
-    """Carte KPI premium (sans sparkline SVG — Streamlit filtre les balises SVG)."""
+    """Carte KPI premium — version CORRIGÉE avec concaténation."""
     
-    # Déterminer si c'est une hausse ou une baisse
     is_positive = tendance.startswith("+")
     arrow = "↑" if is_positive else "↓"
     trend_color = couleur if is_positive else "#ef4444"
     
-    html = f'''
-    <div style="
-        background: #ffffff;
-        border-radius: 20px;
-        padding: 24px 26px;
-        box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06),
-                    0 1px 3px rgba(15, 23, 42, 0.04);
-        border: 1px solid rgba(15, 23, 42, 0.03);
-        height: 100%;
-        min-height: 175px;
-        transition: all 0.25s ease;
-        position: relative;
-        overflow: hidden;
-    ">
-        <div style="
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 4px;
-            background: {couleur};
-            border-radius: 20px 20px 0 0;
-        "></div>
-        
-        <div style="
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 18px;
-        ">
-            <div style="
-                width: 42px; height: 42px;
-                background: {couleur}15;
-                border-radius: 12px;
-                display: flex; align-items: center; justify-content: center;
-                font-size: 1.25rem;
-            ">{icone}</div>
-            <div style="
-                font-size: 0.75rem;
-                color: #64748b;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.8px;
-            ">{label}</div>
-        </div>
-        
-        <div style="
-            font-size: 2.4rem;
-            font-weight: 800;
-            color: #0f172a;
-            line-height: 1;
-            letter-spacing: -1px;
-            margin-bottom: 12px;
-        ">{valeur}</div>
-        
-        <div style="
-            display: inline-block;
-            background: {trend_color}15;
-            color: {trend_color};
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 700;
-        ">{arrow} {tendance}</div>
-    </div>
-    '''
+    html = (
+        '<div style="'
+        'background: #ffffff; '
+        'border-radius: 20px; '
+        'padding: 24px 26px; '
+        'box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04); '
+        'border: 1px solid rgba(15, 23, 42, 0.03); '
+        'height: 100%; '
+        'min-height: 175px; '
+        'position: relative; '
+        'overflow: hidden;'
+        '">'
+        '<div style="'
+        'position: absolute; '
+        'top: 0; left: 0; right: 0; '
+        'height: 4px; '
+        f'background: {couleur}; '
+        'border-radius: 20px 20px 0 0;'
+        '"></div>'
+        '<div style="'
+        'display: flex; '
+        'align-items: center; '
+        'gap: 12px; '
+        'margin-bottom: 18px;'
+        '">'
+        '<div style="'
+        'width: 42px; height: 42px; '
+        f'background: {couleur}15; '
+        'border-radius: 12px; '
+        'display: flex; align-items: center; justify-content: center; '
+        'font-size: 1.25rem;'
+        '">'
+        f'{icone}'
+        '</div>'
+        '<div style="'
+        'font-size: 0.75rem; '
+        'color: #64748b; '
+        'font-weight: 700; '
+        'text-transform: uppercase; '
+        'letter-spacing: 0.8px;'
+        '">'
+        f'{label}'
+        '</div>'
+        '</div>'
+        '<div style="'
+        'font-size: 2.4rem; '
+        'font-weight: 800; '
+        'color: #0f172a; '
+        'line-height: 1; '
+        'letter-spacing: -1px; '
+        'margin-bottom: 12px;'
+        '">'
+        f'{valeur}'
+        '</div>'
+        '<div style="'
+        'display: inline-block; '
+        f'background: {trend_color}15; '
+        f'color: {trend_color}; '
+        'padding: 5px 12px; '
+        'border-radius: 20px; '
+        'font-size: 0.75rem; '
+        'font-weight: 700;'
+        '">'
+        f'{arrow} {tendance}'
+        '</div>'
+        '</div>'
+    )
     st.markdown(html, unsafe_allow_html=True)
 
 
 def section_titre(icone, titre, sous_titre=""):
-    """Titre de section aéré (fond de page clair)."""
-    html = f'''
-    <div style="margin: 40px 0 20px 0;">
-        <h2 style="
-            margin: 0;
-            font-size: 1.35rem;
-            color: #0f172a;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            letter-spacing: -0.3px;
-        ">
-            <span style="font-size: 1.5rem;">{icone}</span>
-            <span>{titre}</span>
-        </h2>
-        {f'<p style="margin: 6px 0 0 44px; color: #64748b; font-size: 0.85rem; font-weight: 500;">{sous_titre}</p>' if sous_titre else ''}
-    </div>
-    '''
+    """Titre de section aéré."""
+    html = (
+        '<div style="margin: 40px 0 20px 0;">'
+        '<h2 style="'
+        'margin: 0; '
+        'font-size: 1.35rem; '
+        'color: #0f172a; '
+        'font-weight: 800; '
+        'display: flex; '
+        'align-items: center; '
+        'gap: 12px; '
+        'letter-spacing: -0.3px;'
+        '">'
+        f'<span style="font-size: 1.5rem;">{icone}</span>'
+        f'<span>{titre}</span>'
+        '</h2>'
+    )
+    if sous_titre:
+        html += (
+            '<p style="'
+            'margin: 6px 0 0 44px; '
+            'color: #64748b; '
+            'font-size: 0.85rem; '
+            'font-weight: 500;'
+            '">'
+            f'{sous_titre}'
+            '</p>'
+        )
+    html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
 
 
