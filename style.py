@@ -1,6 +1,6 @@
 """
 Module style.py - Style CSS personnalise TuniWatch
-Version 0.6 - Ajout cartes KPI + cartes articles + titres de section
+Version 0.6 - Ajout cartes KPI + cartes articles + titres de section (CORRIGÉ)
 """
 
 import streamlit as st
@@ -261,7 +261,7 @@ def page_header(titre, icone, description, badge=None):
 
 
 # ============================================================
-# NOUVELLES FONCTIONS - Visuel Premium
+# NOUVELLES FONCTIONS - Visuel Premium (CORRIGÉES)
 # ============================================================
 
 def kpi_card(icone, label, valeur, tendance=None, couleur=None):
@@ -278,38 +278,43 @@ def kpi_card(icone, label, valeur, tendance=None, couleur=None):
     if couleur is None:
         couleur = "#e70013"
 
-    trend_html = ""
+    # Bloc tendance (optionnel)
     if tendance:
-        trend_html = f'''
-        <div style="display: inline-block; background: rgba(39, 174, 96, 0.12);
-                    color: #27ae60; padding: 4px 10px; border-radius: 12px;
-                    font-size: 0.78rem; font-weight: 700; margin-top: 8px;">
-            ↑ {tendance}
-        </div>
-        '''
+        trend_html = (
+            '<div style="display: inline-block; background: rgba(39, 174, 96, 0.12); '
+            'color: #27ae60; padding: 4px 10px; border-radius: 12px; '
+            'font-size: 0.78rem; font-weight: 700; margin-top: 8px;">'
+            f'↑ {tendance}'
+            '</div>'
+        )
+    else:
+        trend_html = ""
 
-    html = f'''
-    <div style="
-        background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
-        border-radius: 14px;
-        padding: 20px 22px;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-        border-left: 5px solid {couleur};
-        transition: all 0.25s ease;
-        height: 100%;
-        min-height: 130px;
-    ">
-        <div style="font-size: 0.72rem; color: #6c757d; text-transform: uppercase;
-                    letter-spacing: 1.2px; font-weight: 600; margin-bottom: 10px;">
-            {icone} {label}
-        </div>
-        <div style="font-size: 2rem; font-weight: 800; color: #1a1a1a;
-                    line-height: 1.1; margin-bottom: 4px;">
-            {valeur}
-        </div>
-        {trend_html}
-    </div>
-    '''
+    html = (
+        '<div style="'
+        'background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%); '
+        'border-radius: 14px; '
+        'padding: 20px 22px; '
+        'box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); '
+        f'border-left: 5px solid {couleur}; '
+        'height: 100%; '
+        'min-height: 130px;'
+        '">'
+        '<div style="'
+        'font-size: 0.72rem; color: #6c757d; text-transform: uppercase; '
+        'letter-spacing: 1.2px; font-weight: 600; margin-bottom: 10px;'
+        '">'
+        f'{icone} {label}'
+        '</div>'
+        '<div style="'
+        'font-size: 2rem; font-weight: 800; color: #1a1a1a; '
+        'line-height: 1.1; margin-bottom: 4px;'
+        '">'
+        f'{valeur}'
+        '</div>'
+        f'{trend_html}'
+        '</div>'
+    )
     st.markdown(html, unsafe_allow_html=True)
 
 
@@ -325,9 +330,8 @@ def article_card(titre, source, url, score=None, theme=None, emoji_theme="🌐")
         theme: optionnel, thème (ex: "equilibre_politique")
         emoji_theme: emoji associé au thème
     """
-    score_html = ""
+    # Bloc score
     if score is not None:
-        # Couleur selon le score
         if score >= 6:
             score_color = "#27ae60"
             score_bg = "rgba(39, 174, 96, 0.12)"
@@ -338,47 +342,68 @@ def article_card(titre, source, url, score=None, theme=None, emoji_theme="🌐")
             score_color = "#95a5a6"
             score_bg = "rgba(149, 165, 166, 0.12)"
 
-        score_html = f'''
-        <span style="background: {score_bg}; color: {score_color};
-                     padding: 3px 10px; border-radius: 10px;
-                     font-size: 0.72rem; font-weight: 700; margin-left: 8px;">
-            {score:.2f}
-        </span>
-        '''
-
-    theme_html = ""
-    if theme:
-        theme_html = f'''
-        <span style="background: rgba(231, 0, 19, 0.08); color: #e70013;
-                     padding: 3px 10px; border-radius: 10px;
-                     font-size: 0.7rem; font-weight: 600; margin-left: 6px;">
-            {emoji_theme} {theme}
-        </span>
-        '''
-
-    if url:
-        lien = f'<a href="{url}" target="_blank" style="color: #1a1a1a; text-decoration: none; font-weight: 600; font-size: 0.92rem; line-height: 1.4;">{titre}</a>'
+        score_html = (
+            '<span style="'
+            f'background: {score_bg}; color: {score_color}; '
+            'padding: 3px 10px; border-radius: 10px; '
+            'font-size: 0.72rem; font-weight: 700; margin-left: 8px;'
+            '">'
+            f'{score:.2f}'
+            '</span>'
+        )
     else:
-        lien = f'<span style="font-weight: 600; font-size: 0.92rem; color: #1a1a1a;">{titre}</span>'
+        score_html = ""
 
-    html = f'''
-    <div style="
-        background: #ffffff;
-        border-radius: 12px;
-        padding: 16px 18px;
-        margin-bottom: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        border-left: 4px solid #e70013;
-        transition: all 0.2s ease;
-    ">
-        <div style="margin-bottom: 8px;">
-            {lien} {score_html}
-        </div>
-        <div style="font-size: 0.78rem; color: #888;">
-            📰 {source} {theme_html}
-        </div>
-    </div>
-    '''
+    # Bloc thème
+    if theme:
+        theme_html = (
+            '<span style="'
+            'background: rgba(231, 0, 19, 0.08); color: #e70013; '
+            'padding: 3px 10px; border-radius: 10px; '
+            'font-size: 0.7rem; font-weight: 600; margin-left: 6px;'
+            '">'
+            f'{emoji_theme} {theme}'
+            '</span>'
+        )
+    else:
+        theme_html = ""
+
+    # Lien
+    if url:
+        lien = (
+            f'<a href="{url}" target="_blank" style="'
+            'color: #1a1a1a; text-decoration: none; '
+            'font-weight: 600; font-size: 0.92rem; line-height: 1.4;'
+            '">'
+            f'{titre}'
+            '</a>'
+        )
+    else:
+        lien = (
+            '<span style="'
+            'font-weight: 600; font-size: 0.92rem; color: #1a1a1a;'
+            '">'
+            f'{titre}'
+            '</span>'
+        )
+
+    html = (
+        '<div style="'
+        'background: #ffffff; '
+        'border-radius: 12px; '
+        'padding: 16px 18px; '
+        'margin-bottom: 12px; '
+        'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); '
+        'border-left: 4px solid #e70013;'
+        '">'
+        '<div style="margin-bottom: 8px;">'
+        f'{lien} {score_html}'
+        '</div>'
+        '<div style="font-size: 0.78rem; color: #888;">'
+        f'📰 {source} {theme_html}'
+        '</div>'
+        '</div>'
+    )
     st.markdown(html, unsafe_allow_html=True)
 
 
@@ -391,16 +416,24 @@ def section_title(icone, titre, sous_titre=None):
         titre: titre de la section
         sous_titre: optionnel, description courte
     """
-    html = f'''
-    <div style="margin: 30px 0 20px 0;">
-        <h2 style="margin: 0; font-size: 1.4rem; color: #1a1a1a;
-                   font-weight: 700; display: flex; align-items: center;
-                   gap: 10px; border: none; padding: 0;">
-            <span style="font-size: 1.6rem;">{icone}</span>
-            <span>{titre}</span>
-        </h2>
-    '''
+    html = (
+        '<div style="margin: 30px 0 20px 0;">'
+        '<h2 style="'
+        'margin: 0; font-size: 1.4rem; color: #1a1a1a; '
+        'font-weight: 700; display: flex; align-items: center; '
+        'gap: 10px; border: none; padding: 0;'
+        '">'
+        f'<span style="font-size: 1.6rem;">{icone}</span>'
+        f'<span>{titre}</span>'
+        '</h2>'
+    )
     if sous_titre:
-        html += f'<p style="margin: 6px 0 0 40px; color: #888; font-size: 0.88rem;">{sous_titre}</p>'
+        html += (
+            '<p style="'
+            'margin: 6px 0 0 40px; color: #888; font-size: 0.88rem;'
+            '">'
+            f'{sous_titre}'
+            '</p>'
+        )
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
