@@ -1,6 +1,7 @@
 """
 Dashboard Cockpit TuniWatch - Page d'accueil
 Etape G - Session 1 (avec sidebar automatique)
+Version 1.1 - Visuel premium
 """
 
 import streamlit as st
@@ -84,112 +85,111 @@ with st.spinner("Chargement des données..."):
     sentiment = cockpit_stats.stats_sentiment()
 
 # ============================================================
-# SECTION 1 : KPIs PRINCIPAUX
+# SECTION 1 : KPIs PRINCIPAUX (version premium)
 # ============================================================
-st.subheader("📊 Vue globale")
+style.section_title("📊", "Vue globale", "Chiffres clés du monitoring")
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.metric(
-        label="📰 Articles collectés",
-        value=f"{kpis['total_articles']:,}".replace(",", " "),
-        delta=f"+{kpis['total_articles'] - 411}" if kpis['total_articles'] > 411 else None
+    trend = f"+{kpis['total_articles'] - 411}" if kpis['total_articles'] > 411 else None
+    style.kpi_card(
+        "📰", "Articles collectés",
+        f"{kpis['total_articles']:,}".replace(",", " "),
+        tendance=trend
     )
 
 with col2:
-    st.metric(
-        label="📡 Sources actives",
-        value=kpis["total_sources"]
-    )
+    style.kpi_card("📡", "Sources actives", kpis["total_sources"])
 
 with col3:
-    st.metric(
-        label="🎯 Analyses thèmes",
-        value=kpis["total_analyses_themes"]
-    )
+    style.kpi_card("🎯", "Analyses thèmes", kpis["total_analyses_themes"])
 
 with col4:
-    st.metric(
-        label="💭 Analyses sentiments",
-        value=kpis["total_analyses_sentiment"]
-    )
+    style.kpi_card("💭", "Analyses sentiments", kpis["total_analyses_sentiment"])
 
 # ============================================================
-# SECTION 2 : SENTIMENT GLOBAL
+# SECTION 2 : SENTIMENT GLOBAL (version premium)
 # ============================================================
-st.markdown("---")
-st.subheader("😊 Sentiment global")
+style.section_title("😊", "Sentiment global", "Répartition des analyses")
 
 col1, col2, col3, col4 = st.columns(4)
 
 total = (sentiment.get("positifs", 0) or 0) + (sentiment.get("neutres", 0) or 0) + (sentiment.get("negatifs", 0) or 0)
 
 with col1:
-    st.metric(
-        label="🟢 Positifs",
-        value=sentiment.get("positifs", 0) or 0,
-        delta=f"{((sentiment.get('positifs', 0) or 0) / total * 100):.0f}%" if total > 0 else None
+    pct = f"{((sentiment.get('positifs', 0) or 0) / total * 100):.0f}%" if total > 0 else None
+    style.kpi_card(
+        "🟢", "Positifs",
+        sentiment.get("positifs", 0) or 0,
+        tendance=pct, couleur="#27ae60"
     )
 
 with col2:
-    st.metric(
-        label="🟡 Neutres",
-        value=sentiment.get("neutres", 0) or 0,
-        delta=f"{((sentiment.get('neutres', 0) or 0) / total * 100):.0f}%" if total > 0 else None
+    pct = f"{((sentiment.get('neutres', 0) or 0) / total * 100):.0f}%" if total > 0 else None
+    style.kpi_card(
+        "🟡", "Neutres",
+        sentiment.get("neutres", 0) or 0,
+        tendance=pct, couleur="#f39c12"
     )
 
 with col3:
-    st.metric(
-        label="🔴 Négatifs",
-        value=sentiment.get("negatifs", 0) or 0,
-        delta=f"{((sentiment.get('negatifs', 0) or 0) / total * 100):.0f}%" if total > 0 else None
+    pct = f"{((sentiment.get('negatifs', 0) or 0) / total * 100):.0f}%" if total > 0 else None
+    style.kpi_card(
+        "🔴", "Négatifs",
+        sentiment.get("negatifs", 0) or 0,
+        tendance=pct, couleur="#e74c3c"
     )
 
 with col4:
-    st.metric(
-        label="📊 Score moyen",
-        value=f"{kpis['score_moyen']:.2f}" if kpis['score_moyen'] else "0.00"
+    style.kpi_card(
+        "📊", "Score moyen",
+        f"{kpis['score_moyen']:.2f}" if kpis['score_moyen'] else "0.00",
+        couleur="#2c3e50"
     )
 
 # ============================================================
 # SECTION 3 : EVOLUTION + TOP SOURCES
 # ============================================================
-st.markdown("---")
+style.section_title("📈", "Tendances", "Évolution et sources principales")
 
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    st.subheader("📈 Évolution des mentions (30 jours)")
+    st.markdown("##### 📈 Évolution des mentions (30 jours)")
 
     evolution = cockpit_stats.evolution_mentions(30)
 
     if evolution:
         df_evol = pd.DataFrame(evolution)
 
-        fig_evol = px.area(
-            df_evol,
-            x="jour",
-            y="nb",
-            labels={"jour": "", "nb": "Articles"},
-            color_discrete_sequence=["#e70013"]
-        )
-        fig_evol.update_traces(
-            line=dict(width=2, color="#e70013"),
-            fillcolor="rgba(231, 0, 19, 0.1)"
-        )
+        fig_evol = go.Figure()
+        fig_evol.add_trace(go.Scatter(
+            x=df_evol["jour"],
+            y=df_evol["nb"],
+            mode="lines",
+            line=dict(color="#e70013", width=3, shape="spline"),
+            fill="tozeroy",
+            fillcolor="rgba(231, 0, 19, 0.08)",
+            hovertemplate="<b>%{x}</b><br>%{y} articles<extra></extra>"
+        ))
         fig_evol.update_layout(
             height=300,
-            margin=dict(l=10, r=10, t=10, b=10),
+            margin=dict(l=10, r=10, t=20, b=10),
             showlegend=False,
-            hovermode="x unified"
+            hovermode="x unified",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(showgrid=False, showline=True, linecolor="#e0e0e0"),
+            yaxis=dict(showgrid=True, gridcolor="#f0f0f0", showline=False),
+            font=dict(family="Inter, sans-serif", color="#1a1a1a"),
         )
         st.plotly_chart(fig_evol, use_container_width=True)
     else:
         st.info("Aucune donnée d'évolution disponible.")
 
 with col2:
-    st.subheader("📡 Top sources")
+    st.markdown("##### 📡 Top sources")
 
     top_src = cockpit_stats.top_sources(8)
 
@@ -213,7 +213,10 @@ with col2:
             yaxis_title="",
             showlegend=False,
             coloraxis_showscale=False,
-            margin=dict(l=10, r=10, t=10, b=10)
+            margin=dict(l=10, r=10, t=10, b=10),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, sans-serif", color="#1a1a1a"),
         )
         st.plotly_chart(fig_src, use_container_width=True)
     else:
@@ -222,8 +225,7 @@ with col2:
 # ============================================================
 # SECTION 4 : THEMES
 # ============================================================
-st.markdown("---")
-st.subheader("🎯 Répartition par thème")
+style.section_title("🎯", "Répartition par thème", "Focus éditorial")
 
 stats_themes = cockpit_stats.stats_themes_rapide()
 
@@ -242,17 +244,21 @@ if stats_themes:
             names="theme",
             color="theme",
             color_discrete_map=COULEURS_THEMES,
-            hole=0.4
+            hole=0.55
         )
         fig_pie.update_traces(
-            textposition="inside",
-            textinfo="percent+label",
+            textposition="outside",
+            textinfo="percent",
             hovertemplate="<b>%{label}</b><br>%{value} articles<br>%{percent}<extra></extra>"
         )
         fig_pie.update_layout(
-            showlegend=False,
-            height=300,
-            margin=dict(l=10, r=10, t=10, b=10)
+            showlegend=True,
+            height=320,
+            margin=dict(l=10, r=10, t=10, b=10),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, sans-serif", color="#1a1a1a"),
+            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
         )
         st.plotly_chart(fig_pie, use_container_width=True)
 
@@ -268,60 +274,67 @@ if stats_themes:
         )
         fig_bar.update_traces(textposition="outside")
         fig_bar.update_layout(
-            height=300,
+            height=320,
             xaxis_title="Articles",
             yaxis_title="",
             showlegend=False,
             coloraxis_showscale=False,
-            margin=dict(l=10, r=10, t=10, b=10)
+            margin=dict(l=10, r=10, t=10, b=10),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, sans-serif", color="#1a1a1a"),
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 
 # ============================================================
-# SECTION 5 : TOP ARTICLES + DERNIERS ARTICLES
+# SECTION 5 : TOP ARTICLES + DERNIERS ARTICLES (version premium)
 # ============================================================
-st.markdown("---")
+style.section_title("📰", "Articles", "Top pertinents et dernières publications")
 
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    st.subheader("🏆 Top articles pertinents")
+    st.markdown("##### 🏆 Top articles pertinents")
 
     top_arts = cockpit_stats.top_articles_pertinents(5)
 
     if top_arts:
         for i, art in enumerate(top_arts, 1):
             emoji = EMOJIS_THEMES.get(art["theme"], "🌐")
-            with st.container():
-                if art["url"]:
-                    st.markdown(f"**{i}.** {emoji} [{art['titre'][:75]}...]({art['url']})")
-                else:
-                    st.markdown(f"**{i}.** {emoji} {art['titre'][:75]}...")
-                st.caption(f"📰 {art['source']} • Score : **{art['score']:.2f}** • Thème : `{art['theme']}`")
+            titre_complet = art['titre'] if art['titre'] else ""
+            titre_avec_num = f"{i}. {titre_complet[:85]}" + ("..." if len(titre_complet) > 85 else "")
+            style.article_card(
+                titre=titre_avec_num,
+                source=art["source"],
+                url=art["url"],
+                score=art["score"],
+                theme=art["theme"],
+                emoji_theme=emoji
+            )
     else:
         st.info("Aucun article.")
 
 with col2:
-    st.subheader("🆕 Derniers articles")
+    st.markdown("##### 🆕 Derniers articles")
 
     derniers = cockpit_stats.derniers_articles(5)
 
     if derniers:
         for art in derniers:
-            with st.container():
-                if art["url"]:
-                    st.markdown(f"• [{art['titre'][:75]}...]({art['url']})")
-                else:
-                    st.markdown(f"• {art['titre'][:75]}...")
-                st.caption(f"📰 {art['source']}")
+            titre_complet = art['titre'] if art['titre'] else ""
+            titre_court = titre_complet[:85] + ("..." if len(titre_complet) > 85 else "")
+            style.article_card(
+                titre=titre_court,
+                source=art["source"],
+                url=art["url"]
+            )
     else:
         st.info("Aucun article.")
 
 # ============================================================
 # SECTION 6 : SENTIMENT PAR SOURCE
 # ============================================================
-st.markdown("---")
-st.subheader("📊 Sentiment par source")
+style.section_title("📊", "Sentiment par source", "Répartition par média")
 
 sent_src = cockpit_stats.sentiment_par_source(8)
 
@@ -339,11 +352,15 @@ if sent_src:
         labels={"source_court": "Source", "nb": "Articles", "sentiment": "Sentiment"}
     )
     fig_sent_src.update_layout(
-        height=350,
+        height=380,
         xaxis_tickangle=-30,
         xaxis_title="",
         yaxis_title="Articles",
-        margin=dict(l=10, r=10, t=10, b=80)
+        margin=dict(l=10, r=10, t=10, b=80),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, sans-serif", color="#1a1a1a"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     st.plotly_chart(fig_sent_src, use_container_width=True)
 
