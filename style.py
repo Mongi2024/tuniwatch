@@ -1,6 +1,6 @@
 """
 Module style.py - Style CSS personnalise TuniWatch
-Version 0.6 - Ajout cartes KPI + cartes articles + titres de section (CORRIGÉ)
+Version 0.7 - Ajout page Médias (13) dans la navigation
 """
 
 import streamlit as st
@@ -32,9 +32,10 @@ PAGES_CONFIG = {
     "10": ("🚨", "Alertes", "all"),
     "11": ("📄", "Rapport", "all"),
     "12": ("🔍", "Recherche", "all"),
+    "13": ("📺", "Médias", "all"),
 }
 
-ORDRE_AFFICHAGE = ["0", "1", "3", "8", "9", "10", "12", "11", "7", "6", "4", "2", "5"]
+ORDRE_AFFICHAGE = ["0", "1", "3", "8", "9", "10", "12", "11", "7", "13", "6", "4", "2", "5"]
 
 
 def _scanner_pages():
@@ -206,11 +207,9 @@ def _afficher_navigation():
     with st.sidebar:
         st.markdown('<div style="font-size: 0.75rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 15px 0 10px 0;">🧭 Navigation</div>', unsafe_allow_html=True)
 
-        # Dashboard
         if st.button("🏠  Dashboard", use_container_width=True, key="nav_dashboard"):
             st.switch_page("dashboard.py")
 
-        # Autres pages
         for prefixe in ORDRE_AFFICHAGE:
             if prefixe not in PAGES_CONFIG:
                 continue
@@ -261,24 +260,14 @@ def page_header(titre, icone, description, badge=None):
 
 
 # ============================================================
-# NOUVELLES FONCTIONS - Visuel Premium (CORRIGÉES)
+# NOUVELLES FONCTIONS - Visuel Premium (concaténation)
 # ============================================================
 
 def kpi_card(icone, label, valeur, tendance=None, couleur=None):
-    """
-    Affiche une carte KPI moderne.
-
-    Args:
-        icone: emoji ou icône (ex: "📰")
-        label: libellé (ex: "Articles collectés")
-        valeur: valeur à afficher (ex: "2 075")
-        tendance: optionnel, ex "+1664" (affiché en vert)
-        couleur: couleur de la bordure gauche (par défaut rouge TuniWatch)
-    """
+    """Affiche une carte KPI moderne."""
     if couleur is None:
         couleur = "#e70013"
 
-    # Bloc tendance (optionnel)
     if tendance:
         trend_html = (
             '<div style="display: inline-block; background: rgba(39, 174, 96, 0.12); '
@@ -319,18 +308,7 @@ def kpi_card(icone, label, valeur, tendance=None, couleur=None):
 
 
 def article_card(titre, source, url, score=None, theme=None, emoji_theme="🌐"):
-    """
-    Affiche une carte d'article élégante.
-
-    Args:
-        titre: titre de l'article
-        source: nom de la source (ex: "La Presse de Tunisie")
-        url: lien vers l'article
-        score: optionnel, score de pertinence (ex: 6.80)
-        theme: optionnel, thème (ex: "equilibre_politique")
-        emoji_theme: emoji associé au thème
-    """
-    # Bloc score
+    """Affiche une carte d'article élégante."""
     if score is not None:
         if score >= 6:
             score_color = "#27ae60"
@@ -354,7 +332,6 @@ def article_card(titre, source, url, score=None, theme=None, emoji_theme="🌐")
     else:
         score_html = ""
 
-    # Bloc thème
     if theme:
         theme_html = (
             '<span style="'
@@ -368,7 +345,6 @@ def article_card(titre, source, url, score=None, theme=None, emoji_theme="🌐")
     else:
         theme_html = ""
 
-    # Lien
     if url:
         lien = (
             f'<a href="{url}" target="_blank" style="'
@@ -408,14 +384,7 @@ def article_card(titre, source, url, score=None, theme=None, emoji_theme="🌐")
 
 
 def section_title(icone, titre, sous_titre=None):
-    """
-    Affiche un titre de section élégant.
-
-    Args:
-        icone: emoji (ex: "📊")
-        titre: titre de la section
-        sous_titre: optionnel, description courte
-    """
+    """Affiche un titre de section élégant."""
     html = (
         '<div style="margin: 30px 0 20px 0;">'
         '<h2 style="'
