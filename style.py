@@ -1,6 +1,6 @@
 """
 Module style.py - Style CSS personnalise TuniWatch
-Version 0.5 - Version finale stable
+Version 0.6 - Ajout cartes KPI + cartes articles + titres de section
 """
 
 import streamlit as st
@@ -257,4 +257,150 @@ def page_header(titre, icone, description, badge=None):
     html += f'<p style="margin: 8px 0 0 0; color: #666; font-size: 0.95rem; padding-left: 4px;">{description}</p>'
     html += '</div>'
 
+    st.markdown(html, unsafe_allow_html=True)
+
+
+# ============================================================
+# NOUVELLES FONCTIONS - Visuel Premium
+# ============================================================
+
+def kpi_card(icone, label, valeur, tendance=None, couleur=None):
+    """
+    Affiche une carte KPI moderne.
+
+    Args:
+        icone: emoji ou icône (ex: "📰")
+        label: libellé (ex: "Articles collectés")
+        valeur: valeur à afficher (ex: "2 075")
+        tendance: optionnel, ex "+1664" (affiché en vert)
+        couleur: couleur de la bordure gauche (par défaut rouge TuniWatch)
+    """
+    if couleur is None:
+        couleur = "#e70013"
+
+    trend_html = ""
+    if tendance:
+        trend_html = f'''
+        <div style="display: inline-block; background: rgba(39, 174, 96, 0.12);
+                    color: #27ae60; padding: 4px 10px; border-radius: 12px;
+                    font-size: 0.78rem; font-weight: 700; margin-top: 8px;">
+            ↑ {tendance}
+        </div>
+        '''
+
+    html = f'''
+    <div style="
+        background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+        border-radius: 14px;
+        padding: 20px 22px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        border-left: 5px solid {couleur};
+        transition: all 0.25s ease;
+        height: 100%;
+        min-height: 130px;
+    ">
+        <div style="font-size: 0.72rem; color: #6c757d; text-transform: uppercase;
+                    letter-spacing: 1.2px; font-weight: 600; margin-bottom: 10px;">
+            {icone} {label}
+        </div>
+        <div style="font-size: 2rem; font-weight: 800; color: #1a1a1a;
+                    line-height: 1.1; margin-bottom: 4px;">
+            {valeur}
+        </div>
+        {trend_html}
+    </div>
+    '''
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def article_card(titre, source, url, score=None, theme=None, emoji_theme="🌐"):
+    """
+    Affiche une carte d'article élégante.
+
+    Args:
+        titre: titre de l'article
+        source: nom de la source (ex: "La Presse de Tunisie")
+        url: lien vers l'article
+        score: optionnel, score de pertinence (ex: 6.80)
+        theme: optionnel, thème (ex: "equilibre_politique")
+        emoji_theme: emoji associé au thème
+    """
+    score_html = ""
+    if score is not None:
+        # Couleur selon le score
+        if score >= 6:
+            score_color = "#27ae60"
+            score_bg = "rgba(39, 174, 96, 0.12)"
+        elif score >= 4:
+            score_color = "#f39c12"
+            score_bg = "rgba(243, 156, 18, 0.12)"
+        else:
+            score_color = "#95a5a6"
+            score_bg = "rgba(149, 165, 166, 0.12)"
+
+        score_html = f'''
+        <span style="background: {score_bg}; color: {score_color};
+                     padding: 3px 10px; border-radius: 10px;
+                     font-size: 0.72rem; font-weight: 700; margin-left: 8px;">
+            {score:.2f}
+        </span>
+        '''
+
+    theme_html = ""
+    if theme:
+        theme_html = f'''
+        <span style="background: rgba(231, 0, 19, 0.08); color: #e70013;
+                     padding: 3px 10px; border-radius: 10px;
+                     font-size: 0.7rem; font-weight: 600; margin-left: 6px;">
+            {emoji_theme} {theme}
+        </span>
+        '''
+
+    if url:
+        lien = f'<a href="{url}" target="_blank" style="color: #1a1a1a; text-decoration: none; font-weight: 600; font-size: 0.92rem; line-height: 1.4;">{titre}</a>'
+    else:
+        lien = f'<span style="font-weight: 600; font-size: 0.92rem; color: #1a1a1a;">{titre}</span>'
+
+    html = f'''
+    <div style="
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        border-left: 4px solid #e70013;
+        transition: all 0.2s ease;
+    ">
+        <div style="margin-bottom: 8px;">
+            {lien} {score_html}
+        </div>
+        <div style="font-size: 0.78rem; color: #888;">
+            📰 {source} {theme_html}
+        </div>
+    </div>
+    '''
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def section_title(icone, titre, sous_titre=None):
+    """
+    Affiche un titre de section élégant.
+
+    Args:
+        icone: emoji (ex: "📊")
+        titre: titre de la section
+        sous_titre: optionnel, description courte
+    """
+    html = f'''
+    <div style="margin: 30px 0 20px 0;">
+        <h2 style="margin: 0; font-size: 1.4rem; color: #1a1a1a;
+                   font-weight: 700; display: flex; align-items: center;
+                   gap: 10px; border: none; padding: 0;">
+            <span style="font-size: 1.6rem;">{icone}</span>
+            <span>{titre}</span>
+        </h2>
+    '''
+    if sous_titre:
+        html += f'<p style="margin: 6px 0 0 40px; color: #888; font-size: 0.88rem;">{sous_titre}</p>'
+    html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
