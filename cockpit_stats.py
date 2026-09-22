@@ -1,11 +1,15 @@
 """
 Module cockpit_stats.py - Requetes pour le dashboard Cockpit
-Etape G - Session 1 (avec db_universal + fix SQLite)
+Version 2.0 - Ajout fonctions analyse par média et par thème
 """
 
 from db_universal import get_connexion
 from datetime import datetime, timedelta
 
+
+# ============================================================
+# FONCTIONS EXISTANTES (inchangées)
+# ============================================================
 
 def kpis_globaux():
     """KPIs principaux pour la page d'accueil."""
@@ -70,11 +74,7 @@ def stats_sentiment():
 
 
 def evolution_mentions(jours=30):
-    """
-    Evolution du nombre d'articles par jour.
-    Version compatible MySQL + SQLite (dates calculees en Python).
-    """
-    # Calculer la date limite en Python (compatible partout)
+    """Evolution du nombre d'articles par jour."""
     date_limite = (datetime.now() - timedelta(days=jours)).strftime("%Y-%m-%d %H:%M:%S")
 
     conn = get_connexion()
@@ -214,17 +214,13 @@ def stats_themes_rapide():
 
 
 def sentiment_par_source(limite=8):
-    """
-    Sentiment par source (top sources).
-    Version 2 requetes separees (compatible MySQL et SQLite).
-    """
+    """Sentiment par source (top sources)."""
     conn = get_connexion()
     if conn is None:
         return []
 
     curseur = conn.cursor(dictionary=True)
     try:
-        # 1. Recuperer d'abord les top sources
         curseur.execute("""
             SELECT source
             FROM articles
@@ -240,7 +236,6 @@ def sentiment_par_source(limite=8):
         if not top_sources_list:
             return []
 
-        # 2. Construire la requete avec une liste de sources
         placeholders = ",".join(["%s"] * len(top_sources_list))
 
         curseur.execute(f"""
@@ -260,6 +255,269 @@ def sentiment_par_source(limite=8):
             {
                 "source": r["source"],
                 "sentiment": r["sentiment"],
+                "nb": int(r["nb"])
+            }
+            for r in rows
+        ]
+    finally:
+        curseur.close()
+        conn.close()
+
+
+# ============================================================
+# NOUVELLES FONCTIONS - Analyse par média et par thème
+# ============================================================
+
+def liste_sources_actives():
+    """Liste toutes les sources actives (pour les filtres)."""
+    conn = get_connexion()
+    if conn is None:
+        return []
+    curseur = conn.cursor(dictionary=True)
+    try:
+        curseur.execute("""
+            SELECT DISTINCT source
+            FROM articles
+            WHERE source IS NOT NULL AND source != ''
+            ORDER BY source
+        """)
+        rows = curseur.fetchall()
+        return [row["source"] for row in rows]
+    finally:
+        curseur.close()
+        conn.close()
+
+
+def stats_par_source(source, jours=30):
+    """
+    Statistiques complètes pour un média donné.
+    Retourne : dict avec nb_articles, nb_themes, score_moyen, sentiments.
+    """
+    conn = get_connexion()
+    if conn is None:
+        return {}
+
+    curseur = conn.cursor(dictionary=True)
+    try:
+        # 1. Nombre d'articles
+        curseur.execute("""
+            SELECT COUNT(*) AS nb FROM articles WHERE source = %s
+        """, (source,))
+        nb_articles = int(curseur.fetchone()["nb"] or 0)
+
+        # 2. Nombre de thèmes distincts détectés
+        curseur.execute("""
+            SELECT COUNT(DISTINCT at.theme) AS nb
+            FROM articles_themes at
+            JOIN articles a ON a.id = at.article_id
+            WHERE a.source = %s
+        """, (source,))
+        nb_themes = int(curseur.fetchone()["nb"] or 0)
+
+        # 3. Score moyen des thèmes
+        curseur.execute("""
+            SELECT AVG(at.score) AS moyenne
+            FROM articles_themes at
+            JOIN articles a ON a.id = at.article_id
+            WHERE a.source = %s
+        """, (source,))
+        score_moyen = round(float(curseur.fetchone()["moyenne"] or 0), 2)
+
+        # 4. Répartition des sentiments
+        curseur.execute("""
+            SELECT 
+                SUM(CASE WHEN s.sentiment = 'positif' THEN 1 ELSE 0 END) AS positifs,
+                SUM(CASE WHEN s.sentiment = 'neutre' THEN 1 ELSE 0 END) AS neutres,
+                SUM(CASE WHEN s.sentiment = 'negatif' THEN 1 ELSE 0 END) AS negatifs
+            FROM articles_sentiment s
+            JOIN articles a ON a.id = s.article_id
+            WHERE a.source = %s
+        """, (source,))
+        sent = curseur.fetchone()
+
+        return {
+            "source": source,
+            "nb_articles": nb_articles,
+            "nb_themes": nb_themes,
+            "score_moyen": score_moyen,
+            "positifs": int(sent.get("positifs") or 0),
+            "neutres": int(sent.get("neutres") or 0),
+            "negatifs": int(sent.get("negatifs") or 0)
+        }
+    finally:
+        curseur.close()
+        conn.close()
+
+
+def themes_par_source(source, limite=10):
+    """
+    Répartition thématique pour un média donné.
+    Retourne : [{theme, nb_articles, score_moyen}, ...]
+    """
+    conn = get_connexion()
+    if conn is None:
+        return []
+    curseur = conn.cursor(dictionary=True)
+    try:
+        curseur.execute("""
+            SELECT 
+                at.theme,
+                COUNT(DISTINCT at.article_id) AS nb_articles,
+                AVG(at.score) AS score_moyen
+            FROM articles_themes at
+            JOIN articles a ON a.id = at.article_id
+            WHERE a.source = %s
+            GROUP BY at.theme
+            ORDER BY nb_articles DESC
+            LIMIT %s
+        """, (source, limite))
+        rows = curseur.fetchall()
+        return [
+            {
+                "theme": r["theme"],
+                "nb_articles": int(r["nb_articles"]),
+                "score_moyen": round(float(r["score_moyen"] or 0), 2)
+            }
+            for r in rows
+        ]
+    finally:
+        curseur.close()
+        conn.close()
+
+
+def evolution_par_source(source, jours=30):
+    """
+    Évolution quotidienne d'un média donné.
+    Retourne : [{jour, nb}, ...]
+    """
+    date_limite = (datetime.now() - timedelta(days=jours)).strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = get_connexion()
+    if conn is None:
+        return []
+    curseur = conn.cursor(dictionary=True)
+    try:
+        curseur.execute("""
+            SELECT 
+                DATE(date_ajout) AS jour,
+                COUNT(*) AS nb
+            FROM articles
+            WHERE source = %s AND date_ajout >= %s
+            GROUP BY DATE(date_ajout)
+            ORDER BY jour
+        """, (source, date_limite))
+        rows = curseur.fetchall()
+        return [
+            {"jour": str(r["jour"]), "nb": int(r["nb"])}
+            for r in rows
+        ]
+    finally:
+        curseur.close()
+        conn.close()
+
+
+def articles_par_source(source, limite=10):
+    """
+    Derniers articles d'un média donné.
+    Retourne : [{id, titre, url, date_ajout, theme, score}, ...]
+    """
+    conn = get_connexion()
+    if conn is None:
+        return []
+    curseur = conn.cursor(dictionary=True)
+    try:
+        curseur.execute("""
+            SELECT 
+                a.id, a.titre, a.url, a.date_ajout,
+                at.theme, at.score
+            FROM articles a
+            LEFT JOIN articles_themes at ON at.article_id = a.id
+            WHERE a.source = %s
+            ORDER BY a.id DESC
+            LIMIT %s
+        """, (source, limite))
+        rows = curseur.fetchall()
+        return [
+            {
+                "id": int(r["id"]),
+                "titre": r["titre"],
+                "url": r["url"],
+                "date_ajout": str(r["date_ajout"]) if r["date_ajout"] else None,
+                "theme": r["theme"],
+                "score": float(r["score"]) if r["score"] else 0.0
+            }
+            for r in rows
+        ]
+    finally:
+        curseur.close()
+        conn.close()
+
+
+def sentiment_par_theme(limite=10):
+    """
+    Répartition sentiment par thème (pour heatmap ou stacked bar).
+    Retourne : [{theme, sentiment, nb}, ...]
+    """
+    conn = get_connexion()
+    if conn is None:
+        return []
+    curseur = conn.cursor(dictionary=True)
+    try:
+        curseur.execute("""
+            SELECT 
+                at.theme,
+                s.sentiment,
+                COUNT(*) AS nb
+            FROM articles_themes at
+            JOIN articles_sentiment s ON s.article_id = at.article_id
+            GROUP BY at.theme, s.sentiment
+            ORDER BY at.theme, s.sentiment
+        """)
+        rows = curseur.fetchall()
+        return [
+            {
+                "theme": r["theme"],
+                "sentiment": r["sentiment"],
+                "nb": int(r["nb"])
+            }
+            for r in rows
+        ][:limite * 3]
+    finally:
+        curseur.close()
+        conn.close()
+
+
+def comparaison_sources(sources_list, jours=30):
+    """
+    Compare plusieurs médias dans le temps (graphique multi-lignes).
+    Retourne : [{jour, source, nb}, ...]
+    """
+    if not sources_list:
+        return []
+
+    date_limite = (datetime.now() - timedelta(days=jours)).strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = get_connexion()
+    if conn is None:
+        return []
+    curseur = conn.cursor(dictionary=True)
+    try:
+        placeholders = ",".join(["%s"] * len(sources_list))
+        curseur.execute(f"""
+            SELECT 
+                DATE(date_ajout) AS jour,
+                source,
+                COUNT(*) AS nb
+            FROM articles
+            WHERE source IN ({placeholders}) AND date_ajout >= %s
+            GROUP BY DATE(date_ajout), source
+            ORDER BY jour, source
+        """, tuple(sources_list) + (date_limite,))
+        rows = curseur.fetchall()
+        return [
+            {
+                "jour": str(r["jour"]),
+                "source": r["source"],
                 "nb": int(r["nb"])
             }
             for r in rows
@@ -304,6 +562,18 @@ if __name__ == "__main__":
     sources = top_sources(3)
     for s in sources:
         print(f"   {s['source']}: {s['nb_articles']} articles")
+    print()
+
+    print("6. Liste des sources actives :")
+    liste = liste_sources_actives()
+    print(f"   {len(liste)} sources : {liste[:3]}...")
+    print()
+
+    print("7. Stats par source (première source) :")
+    if liste:
+        stats = stats_par_source(liste[0])
+        for k, v in stats.items():
+            print(f"   {k}: {v}")
     print()
 
     print("=" * 60)
