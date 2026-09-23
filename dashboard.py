@@ -1,8 +1,8 @@
-"""
-Dashboard Cockpit TuniWatch - Page d'accueil
-Etape G - Session 1 (avec sidebar automatique)
-Version 1.1 - Visuel premium
-"""
+# ============================================================
+# TuniWatch - Dashboard Cockpit (Page d'accueil)
+# Fichier : dashboard.py
+# Version : 2.0 - Visuel premium
+# ============================================================
 
 import streamlit as st
 import pandas as pd
@@ -12,13 +12,17 @@ import sys
 import os
 from datetime import datetime
 
-# Ajout du dossier
+# Ajout du dossier au path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Imports locaux
 import auth
 import style
 import cockpit_stats
 
-# Configuration
+# ============================================================
+# CONFIGURATION DE LA PAGE
+# ============================================================
 st.set_page_config(
     page_title="TuniWatch - Cockpit",
     page_icon="🇹🇳",
@@ -26,19 +30,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Style + Sidebar automatique (logo, user, navigation, deconnexion)
-style.appliquer_style()
+# ============================================================
+# APPLICATION DU STYLE + SIDEBAR
+# ============================================================
+style.apply_style()
 
-# Protection
+# Protection : connexion obligatoire
 auth.require_login()
 
 # ============================================================
 # COULEURS
 # ============================================================
 COULEURS_SENTIMENT = {
-    "positif": "#27ae60",
-    "neutre": "#f39c12",
-    "negatif": "#e74c3c"
+    "positif": "#06D6A0",
+    "neutre": "#FFD166",
+    "negatif": "#EF476F"
 }
 
 COULEURS_THEMES = {
@@ -62,7 +68,7 @@ EMOJIS_THEMES = {
 }
 
 # ============================================================
-# EN-TETE
+# EN-TÊTE
 # ============================================================
 col1, col2 = st.columns([3, 1])
 
@@ -71,6 +77,7 @@ with col1:
     st.caption(f"Vue d'ensemble — {datetime.now().strftime('%A %d %B %Y à %H:%M')}")
 
 with col2:
+    st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🔄 Actualiser", use_container_width=True, key="cockpit_refresh"):
         st.cache_data.clear()
         st.rerun()
@@ -78,80 +85,99 @@ with col2:
 st.markdown("---")
 
 # ============================================================
-# CHARGEMENT DES DONNEES
+# CHARGEMENT DES DONNÉES
 # ============================================================
 with st.spinner("Chargement des données..."):
     kpis = cockpit_stats.kpis_globaux()
     sentiment = cockpit_stats.stats_sentiment()
 
 # ============================================================
-# SECTION 1 : KPIs PRINCIPAUX (version premium)
+# SECTION 1 : KPIs PRINCIPAUX
 # ============================================================
-style.section_title("📊", "Vue globale", "Chiffres clés du monitoring")
+st.markdown("## 📊 Vue globale")
+st.caption("Chiffres clés du monitoring")
+st.markdown("")
 
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     trend = f"+{kpis['total_articles'] - 411}" if kpis['total_articles'] > 411 else None
     style.kpi_card(
-        "📰", "Articles collectés",
+        "📰",
+        "Articles collectés",
         f"{kpis['total_articles']:,}".replace(",", " "),
-        tendance=trend
+        trend=trend,
+        trend_type="positive"
     )
 
 with col2:
-    style.kpi_card("📡", "Sources actives", kpis["total_sources"])
+    style.kpi_card(
+        "📡",
+        "Sources actives",
+        str(kpis["total_sources"]),
+        trend_type="neutral"
+    )
 
 with col3:
-    style.kpi_card("🎯", "Analyses thèmes", kpis["total_analyses_themes"])
+    style.kpi_card(
+        "🎯",
+        "Analyses thèmes",
+        str(kpis["total_analyses_themes"]),
+        trend_type="neutral"
+    )
 
 with col4:
-    style.kpi_card("💭", "Analyses sentiments", kpis["total_analyses_sentiment"])
+    style.kpi_card(
+        "💭",
+        "Analyses sentiments",
+        str(kpis["total_analyses_sentiment"]),
+        trend_type="neutral"
+    )
+
+st.markdown("---")
 
 # ============================================================
-# SECTION 2 : SENTIMENT GLOBAL (version premium)
+# SECTION 2 : SENTIMENT GLOBAL
 # ============================================================
-style.section_title("😊", "Sentiment global", "Répartition des analyses")
+st.markdown("## 😊 Sentiment global")
+st.caption("Répartition des analyses")
+st.markdown("")
 
 col1, col2, col3, col4 = st.columns(4)
 
-total = (sentiment.get("positifs", 0) or 0) + (sentiment.get("neutres", 0) or 0) + (sentiment.get("negatifs", 0) or 0)
+total = (
+    (sentiment.get("positifs", 0) or 0)
+    + (sentiment.get("neutres", 0) or 0)
+    + (sentiment.get("negatifs", 0) or 0)
+)
 
 with col1:
-    pct = f"{((sentiment.get('positifs', 0) or 0) / total * 100):.0f}%" if total > 0 else None
-    style.kpi_card(
-        "🟢", "Positifs",
-        sentiment.get("positifs", 0) or 0,
-        tendance=pct, couleur="#27ae60"
-    )
+    pos = sentiment.get("positifs", 0) or 0
+    pct = f"{pos / total * 100:.0f}%" if total > 0 else None
+    style.kpi_card("🟢", "Positifs", str(pos), trend=pct, trend_type="positive")
 
 with col2:
-    pct = f"{((sentiment.get('neutres', 0) or 0) / total * 100):.0f}%" if total > 0 else None
-    style.kpi_card(
-        "🟡", "Neutres",
-        sentiment.get("neutres", 0) or 0,
-        tendance=pct, couleur="#f39c12"
-    )
+    neu = sentiment.get("neutres", 0) or 0
+    pct = f"{neu / total * 100:.0f}%" if total > 0 else None
+    style.kpi_card("🟡", "Neutres", str(neu), trend=pct, trend_type="neutral")
 
 with col3:
-    pct = f"{((sentiment.get('negatifs', 0) or 0) / total * 100):.0f}%" if total > 0 else None
-    style.kpi_card(
-        "🔴", "Négatifs",
-        sentiment.get("negatifs", 0) or 0,
-        tendance=pct, couleur="#e74c3c"
-    )
+    neg = sentiment.get("negatifs", 0) or 0
+    pct = f"{neg / total * 100:.0f}%" if total > 0 else None
+    style.kpi_card("🔴", "Négatifs", str(neg), trend=pct, trend_type="negative")
 
 with col4:
-    style.kpi_card(
-        "📊", "Score moyen",
-        f"{kpis['score_moyen']:.2f}" if kpis['score_moyen'] else "0.00",
-        couleur="#2c3e50"
-    )
+    score = f"{kpis['score_moyen']:.2f}" if kpis.get('score_moyen') else "0.00"
+    style.kpi_card("📊", "Score moyen", score, trend_type="neutral")
+
+st.markdown("---")
 
 # ============================================================
-# SECTION 3 : EVOLUTION + TOP SOURCES
+# SECTION 3 : ÉVOLUTION + TOP SOURCES
 # ============================================================
-style.section_title("📈", "Tendances", "Évolution et sources principales")
+st.markdown("## 📈 Tendances")
+st.caption("Évolution et sources principales")
+st.markdown("")
 
 col1, col2 = st.columns([2, 1])
 
@@ -168,9 +194,9 @@ with col1:
             x=df_evol["jour"],
             y=df_evol["nb"],
             mode="lines",
-            line=dict(color="#e70013", width=3, shape="spline"),
+            line=dict(color="#E63946", width=3, shape="spline"),
             fill="tozeroy",
-            fillcolor="rgba(231, 0, 19, 0.08)",
+            fillcolor="rgba(230, 57, 70, 0.08)",
             hovertemplate="<b>%{x}</b><br>%{y} articles<extra></extra>"
         ))
         fig_evol.update_layout(
@@ -180,9 +206,9 @@ with col1:
             hovermode="x unified",
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(showgrid=False, showline=True, linecolor="#e0e0e0"),
-            yaxis=dict(showgrid=True, gridcolor="#f0f0f0", showline=False),
-            font=dict(family="Inter, sans-serif", color="#1a1a1a"),
+            xaxis=dict(showgrid=False, showline=True, linecolor="#E9ECEF"),
+            yaxis=dict(showgrid=True, gridcolor="#F1F3F5", showline=False),
+            font=dict(family="Inter, sans-serif", color="#1D3557"),
         )
         st.plotly_chart(fig_evol, use_container_width=True)
     else:
@@ -216,16 +242,20 @@ with col2:
             margin=dict(l=10, r=10, t=10, b=10),
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(family="Inter, sans-serif", color="#1a1a1a"),
+            font=dict(family="Inter, sans-serif", color="#1D3557"),
         )
         st.plotly_chart(fig_src, use_container_width=True)
     else:
         st.info("Aucune source.")
 
+st.markdown("---")
+
 # ============================================================
-# SECTION 4 : THEMES
+# SECTION 4 : THÈMES
 # ============================================================
-style.section_title("🎯", "Répartition par thème", "Focus éditorial")
+st.markdown("## 🎯 Répartition par thème")
+st.caption("Focus éditorial")
+st.markdown("")
 
 stats_themes = cockpit_stats.stats_themes_rapide()
 
@@ -233,7 +263,6 @@ if stats_themes:
     df_themes = pd.DataFrame(stats_themes)
     df_themes["emoji"] = df_themes["theme"].apply(lambda t: EMOJIS_THEMES.get(t, "🌐"))
     df_themes["label"] = df_themes["emoji"] + " " + df_themes["theme"]
-    df_themes["couleur"] = df_themes["theme"].apply(lambda t: COULEURS_THEMES.get(t, "#95a5a6"))
 
     col1, col2 = st.columns([1, 1])
 
@@ -257,7 +286,7 @@ if stats_themes:
             margin=dict(l=10, r=10, t=10, b=10),
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(family="Inter, sans-serif", color="#1a1a1a"),
+            font=dict(family="Inter, sans-serif", color="#1D3557"),
             legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
         )
         st.plotly_chart(fig_pie, use_container_width=True)
@@ -282,14 +311,20 @@ if stats_themes:
             margin=dict(l=10, r=10, t=10, b=10),
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(family="Inter, sans-serif", color="#1a1a1a"),
+            font=dict(family="Inter, sans-serif", color="#1D3557"),
         )
         st.plotly_chart(fig_bar, use_container_width=True)
+else:
+    st.info("Aucune donnée de thème disponible.")
+
+st.markdown("---")
 
 # ============================================================
-# SECTION 5 : TOP ARTICLES + DERNIERS ARTICLES (version premium)
+# SECTION 5 : TOP ARTICLES + DERNIERS ARTICLES
 # ============================================================
-style.section_title("📰", "Articles", "Top pertinents et dernières publications")
+st.markdown("## 📰 Articles")
+st.caption("Top pertinents et dernières publications")
+st.markdown("")
 
 col1, col2 = st.columns([1, 1])
 
@@ -300,16 +335,26 @@ with col1:
 
     if top_arts:
         for i, art in enumerate(top_arts, 1):
-            emoji = EMOJIS_THEMES.get(art["theme"], "🌐")
-            titre_complet = art['titre'] if art['titre'] else ""
+            titre_complet = art["titre"] if art["titre"] else ""
             titre_avec_num = f"{i}. {titre_complet[:85]}" + ("..." if len(titre_complet) > 85 else "")
+
+            # Détecter le sentiment si dispo
+            sentiment_art = None
+            if art.get("sentiment"):
+                s = str(art["sentiment"]).lower()
+                if "pos" in s:
+                    sentiment_art = "positif"
+                elif "neg" in s:
+                    sentiment_art = "negatif"
+                else:
+                    sentiment_art = "neutre"
+
             style.article_card(
                 titre=titre_avec_num,
-                source=art["source"],
-                url=art["url"],
-                score=art["score"],
-                theme=art["theme"],
-                emoji_theme=emoji
+                source=art.get("source", ""),
+                date=art.get("date_publication", "")[:10] if art.get("date_publication") else "",
+                sentiment=sentiment_art,
+                url=art.get("url")
             )
     else:
         st.info("Aucun article.")
@@ -321,20 +366,26 @@ with col2:
 
     if derniers:
         for art in derniers:
-            titre_complet = art['titre'] if art['titre'] else ""
+            titre_complet = art["titre"] if art["titre"] else ""
             titre_court = titre_complet[:85] + ("..." if len(titre_complet) > 85 else "")
+
             style.article_card(
                 titre=titre_court,
-                source=art["source"],
-                url=art["url"]
+                source=art.get("source", ""),
+                date=art.get("date_publication", "")[:10] if art.get("date_publication") else "",
+                url=art.get("url")
             )
     else:
         st.info("Aucun article.")
 
+st.markdown("---")
+
 # ============================================================
 # SECTION 6 : SENTIMENT PAR SOURCE
 # ============================================================
-style.section_title("📊", "Sentiment par source", "Répartition par média")
+st.markdown("## 📊 Sentiment par source")
+st.caption("Répartition par média")
+st.markdown("")
 
 sent_src = cockpit_stats.sentiment_par_source(8)
 
@@ -359,12 +410,20 @@ if sent_src:
         margin=dict(l=10, r=10, t=10, b=80),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, sans-serif", color="#1a1a1a"),
+        font=dict(family="Inter, sans-serif", color="#1D3557"),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     st.plotly_chart(fig_sent_src, use_container_width=True)
+else:
+    st.info("Aucune donnée de sentiment par source.")
 
 # ============================================================
-# FOOTER
+# PIED DE PAGE
 # ============================================================
-style.footer()
+st.markdown("---")
+st.markdown(
+    "<div style='text-align:center; color:#6C757D; font-size:0.8rem; padding:1rem;'>"
+    "🇹🇳 <b>TuniWatch</b> © 2026 — Observatoire des médias en Tunisie"
+    "</div>",
+    unsafe_allow_html=True
+)
