@@ -244,3 +244,31 @@ def article_card(titre: str, source: str = "", date: str = "", sentiment: str = 
         </div>
     </div>
     """, unsafe_allow_html=True)
+    # ============================================================
+# ALIAS POUR COMPATIBILITÉ (les anciennes pages appellent
+# style.appliquer_style() et style.kpi_card() avec d'autres params)
+# ============================================================
+
+def appliquer_style():
+    """Alias de apply_style() pour compatibilité avec les anciennes pages."""
+    return apply_style()
+
+
+# Alias pour les fonctions supplémentaires utilisées par certaines pages
+def section_title(icone, titre, sous_titre=""):
+    """Affiche un titre de section avec icône."""
+    st.markdown(f"## {icone} {titre}")
+    if sous_titre:
+        st.caption(sous_titre)
+    st.markdown("")
+
+
+def footer():
+    """Affiche le pied de page."""
+    st.markdown("---")
+    st.markdown(
+        "<div style='text-align:center; color:#6C757D; font-size:0.8rem; padding:1rem;'>"
+        "🇹🇳 <b>TuniWatch</b> © 2026 — Observatoire des médias en Tunisie"
+        "</div>",
+        unsafe_allow_html=True
+    )
