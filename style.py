@@ -1,6 +1,7 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v16 - SOLUTION SIMPLE)
+# TuniWatch - Style Professionnel (v17 - FINAL COMPLET)
 # Fichier : style.py
+# Description : Design premium + correctifs graphiques + composants
 # ============================================================
 
 import streamlit as st
@@ -11,6 +12,7 @@ import re
 # 🔧 NETTOYAGE HTML
 # ============================================================
 def nettoyer_html(texte):
+    """Nettoie UNIQUEMENT les balises HTML résiduelles."""
     if not texte:
         return ""
     texte = str(texte)
@@ -28,6 +30,8 @@ def nettoyer_html(texte):
 # 🎨 APPLICATION DU STYLE
 # ============================================================
 def apply_style():
+    """Applique le style CSS personnalisé à l'application."""
+
     st.markdown("""
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,28 +40,43 @@ def apply_style():
 
     st.markdown("""
     <style>
+        /* ============================================================
+           POLICE PRINCIPALE (sans toucher aux icônes)
+           ============================================================ */
         html, body, .stApp, [class*="css"] {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
+
+        /* ⚠️ NE PAS toucher aux polices des icônes Streamlit */
         [class*="material-symbols"],
         [class*="Material Symbols"],
         [data-testid="stIconMaterial"],
         span[translate="no"] {
             font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons', sans-serif !important;
         }
+
+        /* ============================================================
+           CONTENEUR PRINCIPAL
+           ============================================================ */
         .main .block-container {
-            padding-top: 2.5rem !important;
+            padding-top: 3rem !important;
             padding-bottom: 3rem !important;
             padding-left: 3rem !important;
             padding-right: 3rem !important;
             max-width: 1500px !important;
         }
+
+        /* ============================================================
+           TITRES
+           ============================================================ */
         h1 { color: #1D3557 !important; font-weight: 800 !important; font-size: 2.2rem !important; letter-spacing: -0.8px !important; }
         h2 { color: #1D3557 !important; font-weight: 700 !important; font-size: 1.5rem !important; letter-spacing: -0.4px !important; }
         h3, h5 { color: #1D3557 !important; font-weight: 700 !important; }
         .stCaption, [data-testid="stCaptionContainer"] { color: #6C757D !important; font-size: 0.9rem !important; }
 
-        /* SIDEBAR */
+        /* ============================================================
+           SIDEBAR
+           ============================================================ */
         section[data-testid="stSidebar"] {
             background: linear-gradient(180deg, #1D3557 0%, #0E1117 100%) !important;
         }
@@ -66,9 +85,11 @@ def apply_style():
         section[data-testid="stSidebar"] nav ul li a {
             border-radius: 10px !important;
             padding: 0.6rem 1rem !important;
+            transition: all 0.2s ease !important;
         }
         section[data-testid="stSidebar"] nav ul li a:hover {
             background: rgba(230, 57, 70, 0.2) !important;
+            transform: translateX(4px) !important;
         }
         section[data-testid="stSidebar"] nav ul li a[aria-current="page"] {
             background: rgba(230, 57, 70, 0.35) !important;
@@ -76,7 +97,7 @@ def apply_style():
             font-weight: 700 !important;
         }
 
-        /* ✅ EXPANDER UTILISATEUR EN HAUT DE LA SIDEBAR */
+        /* Expander utilisateur dans la sidebar */
         section[data-testid="stSidebar"] details {
             background: linear-gradient(135deg, rgba(230, 57, 70, 0.2) 0%, rgba(230, 57, 70, 0.06) 100%) !important;
             border: 1px solid rgba(230, 57, 70, 0.4) !important;
@@ -88,14 +109,7 @@ def apply_style():
             font-weight: 700 !important;
             color: #FFD166 !important;
             padding: 8px 4px !important;
-            cursor: pointer !important;
         }
-        section[data-testid="stSidebar"] details[open] summary {
-            border-bottom: 1px solid rgba(255,255,255,0.1) !important;
-            margin-bottom: 8px !important;
-        }
-
-        /* Bouton déconnexion dans l'expander */
         section[data-testid="stSidebar"] details .stButton > button {
             background: linear-gradient(135deg, #e70013 0%, #b8000f 100%) !important;
             color: white !important;
@@ -109,10 +123,29 @@ def apply_style():
         section[data-testid="stSidebar"] details .stButton > button:hover {
             background: linear-gradient(135deg, #b8000f 0%, #900008 100%) !important;
             transform: translateY(-2px) !important;
-            box-shadow: 0 5px 15px rgba(231, 0, 19, 0.4) !important;
         }
 
-        /* CARTES KPI */
+        /* ============================================================
+           ✅ CORRECTION DES GRAPHIQUES PLOTLY (donut, camembert, barres)
+           ============================================================ */
+        div[data-testid="stPlotlyChart"] {
+            padding: 8px !important;
+            border-radius: 16px !important;
+            background: #FFFFFF !important;
+            box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06) !important;
+            overflow: visible !important;
+            margin-bottom: 16px !important;
+        }
+        div[data-testid="stPlotlyChart"] > div {
+            overflow: visible !important;
+        }
+        div[data-testid="stPlotlyChart"] .legend {
+            font-size: 0.85rem !important;
+        }
+
+        /* ============================================================
+           CARTES KPI
+           ============================================================ */
         .kpi-card {
             background: #FFFFFF !important;
             border-radius: 16px !important;
@@ -120,8 +153,8 @@ def apply_style():
             box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04) !important;
             border: 1px solid #E9ECEF !important;
             border-left: 5px solid #E63946 !important;
-            height: 100% !important;
             transition: all 0.3s ease !important;
+            height: 100% !important;
         }
         .kpi-card:hover {
             transform: translateY(-6px) !important;
@@ -148,7 +181,9 @@ def apply_style():
         .kpi-trend.negative { color: #EF476F !important; background: rgba(239, 71, 111, 0.12) !important; }
         .kpi-trend.neutral { color: #B8860B !important; background: rgba(255, 209, 102, 0.15) !important; }
 
-        /* CARTES ARTICLES */
+        /* ============================================================
+           CARTES ARTICLES
+           ============================================================ */
         .article-card {
             background: #FFFFFF !important;
             border-radius: 12px !important;
@@ -157,35 +192,62 @@ def apply_style():
             box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
             border: 1px solid #E9ECEF !important;
             border-left: 4px solid transparent !important;
+            transition: all 0.2s ease !important;
         }
         .article-card:hover {
             box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
             border-left-color: #E63946 !important;
             transform: translateX(4px) !important;
         }
-        .article-title { font-weight: 600 !important; color: #1D3557 !important; font-size: 0.95rem !important; margin-bottom: 0.5rem !important; line-height: 1.4 !important; }
-        .article-meta { font-size: 0.78rem !important; color: #6C757D !important; display: flex !important; gap: 0.8rem !important; flex-wrap: wrap !important; align-items: center !important; }
-        .article-badge { display: inline-block !important; padding: 0.15rem 0.6rem !important; border-radius: 20px !important; font-size: 0.68rem !important; font-weight: 700 !important; text-transform: uppercase !important; }
+        .article-title {
+            font-weight: 600 !important; color: #1D3557 !important;
+            font-size: 0.95rem !important; margin-bottom: 0.5rem !important;
+            line-height: 1.4 !important;
+        }
+        .article-meta {
+            font-size: 0.78rem !important; color: #6C757D !important;
+            display: flex !important; gap: 0.8rem !important;
+            flex-wrap: wrap !important; align-items: center !important;
+        }
+        .article-badge {
+            display: inline-block !important; padding: 0.15rem 0.6rem !important;
+            border-radius: 20px !important; font-size: 0.68rem !important;
+            font-weight: 700 !important; text-transform: uppercase !important;
+        }
         .badge-positif { background: rgba(6, 214, 160, 0.15) !important; color: #06D6A0 !important; }
         .badge-negatif { background: rgba(239, 71, 111, 0.15) !important; color: #EF476F !important; }
         .badge-neutre  { background: rgba(255, 209, 102, 0.2) !important;  color: #B8860B !important; }
 
-        /* BOUTONS (contenu) */
+        /* ============================================================
+           BOUTONS (contenu principal)
+           ============================================================ */
         .main .stButton > button {
             border-radius: 10px !important; font-weight: 600 !important;
-            padding: 0.55rem 1.4rem !important;
+            padding: 0.55rem 1.4rem !important; transition: all 0.2s ease !important;
             border: none !important; background: #E63946 !important;
-            color: white !important;
+            color: white !important; box-shadow: 0 2px 8px rgba(230, 57, 70, 0.2) !important;
         }
         .main .stButton > button:hover {
             background: #C1121F !important;
             transform: translateY(-2px) !important;
+            box-shadow: 0 6px 16px rgba(230, 57, 70, 0.3) !important;
         }
 
+        /* ============================================================
+           SEPARATEURS
+           ============================================================ */
         hr { border: none !important; border-top: 1px solid #E9ECEF !important; margin: 2.5rem 0 !important; }
+
+        /* ============================================================
+           SCROLLBAR
+           ============================================================ */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #F8F9FA; }
         ::-webkit-scrollbar-thumb { background: #CED4DA; border-radius: 4px; }
+
+        /* ============================================================
+           CACHER LES ÉLÉMENTS STREAMLIT PARASITES
+           ============================================================ */
         .stDeployButton { display: none !important; }
         #MainMenu { visibility: hidden; }
     </style>
@@ -219,10 +281,8 @@ def sidebar_user():
 
     initiale = login[0].upper() if login else "?"
 
-    # ✅ EXPANDER qui contient le bloc user + bouton déconnexion
     with st.sidebar:
         with st.expander(f"👤  {login}  ({emoji_role} {label_role})", expanded=True):
-            # Bloc visuel utilisateur
             st.markdown(f"""
             <div style="
                 display: flex;
@@ -249,7 +309,6 @@ def sidebar_user():
             </div>
             """, unsafe_allow_html=True)
 
-            # ✅ BOUTON DÉCONNEXION
             if st.button(
                 "🚪  Se déconnecter",
                 use_container_width=True,
@@ -259,12 +318,32 @@ def sidebar_user():
                 st.rerun()
 
 
-# ============================================================
-# 🚪 FONCTION LOGOUT VIDE (pour compatibilité auth.py)
-# ============================================================
 def sidebar_logout():
     """Ne fait rien - tout est dans sidebar_user()."""
     pass
+
+
+# ============================================================
+# 📊 CONFIGURATION DES GRAPHIQUES PLOTLY
+# ============================================================
+def configurer_graphique(fig, hauteur=350):
+    """
+    Configure un graphique Plotly avec des marges adaptées
+    pour éviter que les labels soient coupés.
+
+    Usage :
+        fig = go.Figure(...)
+        style.configurer_graphique(fig)
+        st.plotly_chart(fig, use_container_width=True)
+    """
+    fig.update_layout(
+        height=hauteur,
+        margin=dict(l=40, r=40, t=30, b=50),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, sans-serif", size=12, color="#1D3557"),
+    )
+    return fig
 
 
 # ============================================================
@@ -272,10 +351,16 @@ def sidebar_logout():
 # ============================================================
 def kpi_card(icon, label, value, trend=None, trend_type="positive",
              tendance=None, couleur=None, **kwargs):
+    """Affiche une carte KPI professionnelle."""
     if trend is None and tendance is not None:
         trend = tendance
+
     border_style = f"border-left: 5px solid {couleur} !important;" if couleur else ""
-    trend_html = f'<span class="kpi-trend {trend_type}">{trend}</span>' if trend else ""
+
+    trend_html = ""
+    if trend:
+        trend_html = f'<span class="kpi-trend {trend_type}">{trend}</span>'
+
     st.markdown(f"""
     <div class="kpi-card" style="{border_style}">
         <span class="kpi-icon">{icon}</span>
@@ -287,21 +372,26 @@ def kpi_card(icon, label, value, trend=None, trend_type="positive",
 
 
 def article_card(titre, source="", date="", sentiment=None, url=None, **kwargs):
+    """Affiche une carte d'article professionnelle."""
     titre_propre = nettoyer_html(titre)
     source_propre = nettoyer_html(source)
     date_propre = str(date or "").strip()
+
     if not titre_propre:
         titre_propre = "(Titre non disponible)"
+
     badge_html = ""
     if sentiment:
-        sc = str(sentiment).lower().strip()
-        if sc in ("positif", "negatif", "neutre"):
-            badge_html = f'<span class="article-badge badge-{sc}">{sc}</span>'
+        sentiment_clean = str(sentiment).lower().strip()
+        if sentiment_clean in ("positif", "negatif", "neutre"):
+            badge_html = f'<span class="article-badge badge-{sentiment_clean}">{sentiment_clean}</span>'
+
     url_clean = str(url or "").strip()
     link_html = (
         f'<a href="{url_clean}" target="_blank" rel="noopener" '
         f'style="color:#E63946; text-decoration:none; font-weight:600;">🔗 Lire</a>'
     ) if url_clean else ''
+
     meta_parts = [f'<span>📰 {source_propre}</span>']
     if date_propre:
         meta_parts.append(f'<span>📅 {date_propre[:10]}</span>')
@@ -309,23 +399,30 @@ def article_card(titre, source="", date="", sentiment=None, url=None, **kwargs):
         meta_parts.append(badge_html)
     if link_html:
         meta_parts.append(link_html)
+
     meta_html = " ".join(meta_parts)
+
     st.markdown(f"""
     <div class="article-card">
         <div class="article-title">{titre_propre}</div>
-        <div class="article-meta">{meta_html}</div>
+        <div class="article-meta">
+            {meta_html}
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
 
 # ============================================================
-# 🔗 ALIAS
+# 🔗 ALIAS POUR COMPATIBILITÉ
 # ============================================================
+
 def appliquer_style():
+    """Alias de apply_style() pour compatibilité."""
     return apply_style()
 
 
 def section_title(icone, titre, sous_titre=""):
+    """Affiche un titre de section avec icône."""
     st.markdown(f"## {icone} {titre}")
     if sous_titre:
         st.caption(sous_titre)
@@ -333,6 +430,7 @@ def section_title(icone, titre, sous_titre=""):
 
 
 def page_header(titre, icone="", description="", badge=None):
+    """Affiche un en-tête de page premium."""
     badge_html = ""
     if badge:
         badge_html = (
@@ -341,6 +439,7 @@ def page_header(titre, icone="", description="", badge=None):
             f'border-radius:20px; font-size:0.75rem; font-weight:700; '
             f'margin-left:0.5rem;">{badge}</span>'
         )
+
     st.markdown(f"""
     <div style="padding: 1rem 0 1.5rem 0;">
         <h1 style="margin:0; color:#1D3557; font-weight:800; font-size:2.4rem; letter-spacing:-1px;">
@@ -355,6 +454,7 @@ def page_header(titre, icone="", description="", badge=None):
 
 
 def footer():
+    """Affiche le pied de page."""
     st.markdown("---")
     st.markdown(
         "<div style='text-align:center; color:#6C757D; font-size:0.8rem; padding:1rem;'>"
