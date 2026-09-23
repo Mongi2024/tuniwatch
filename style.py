@@ -321,23 +321,50 @@ def kpi_card(icon: str, label: str, value: str, trend: str = None, trend_type: s
     """, unsafe_allow_html=True)
 
 
-def article_card(titre: str, source: str, date: str = "", sentiment: str = None, url: str = None):
-    """Affiche une carte d'article professionnelle."""
+def article_card(titre: str, source: str = "", date: str = "", sentiment: str = None, url: str = None, **kwargs):
+    """
+    Affiche une carte d'article professionnelle.
+    Accepte des paramètres supplémentaires (score, theme, emoji_theme) sans planter.
+    """
+    # Nettoyer le titre de tout HTML résiduel
+    import re
+    titre_propre = re.sub(r'<[^>]+>', '', str(titre or ""))
+    titre_propre = titre_propre.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+    titre_propre = titre_propre.strip()
+
+    # Nettoyer la source
+    source_propre = re.sub(r'<[^>]+>', '', str(source or "")).strip()
+
+    # Nettoyer la date
+    date_propre = str(date or "").strip()
+
+    # Badge de sentiment
     badge_html = ""
     if sentiment:
-        badge_class = f"badge-{sentiment}"
-        badge_html = f'<span class="article-badge {badge_class}">{sentiment}</span>'
+        sentiment_clean = str(sentiment).lower().strip()
+        if sentiment_clean in ("positif", "negatif", "neutre"):
+            badge_html = f'<span class="article-badge badge-{sentiment_clean}">{sentiment_clean}</span>'
 
-    link_html = f'<a href="{url}" target="_blank" style="color:#E63946; text-decoration:none;">🔗</a>' if url else ''
+    # Lien
+    url_clean = str(url or "").strip()
+    link_html = f'<a href="{url_clean}" target="_blank" rel="noopener" style="color:#E63946; text-decoration:none; font-weight:600;">🔗 Lire</a>' if url_clean else ''
+
+    # Construire les métadonnées proprement
+    meta_parts = [f'<span>📰 {source_propre}</span>']
+    if date_propre:
+        meta_parts.append(f'<span>📅 {date_propre[:10]}</span>')
+    if badge_html:
+        meta_parts.append(badge_html)
+    if link_html:
+        meta_parts.append(link_html)
+
+    meta_html = " ".join(meta_parts)
 
     st.markdown(f"""
     <div class="article-card">
-        <div class="article-title">{titre}</div>
+        <div class="article-title">{titre_propre}</div>
         <div class="article-meta">
-            <span>📰 {source}</span>
-            {f'<span>📅 {date}</span>' if date else ''}
-            {badge_html}
-            {link_html}
+            {meta_html}
         </div>
     </div>
     """, unsafe_allow_html=True)
