@@ -1,7 +1,7 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v17 - FINAL COMPLET)
+# TuniWatch - Style Professionnel (v18 - FINAL ANTI-VIBRATION)
 # Fichier : style.py
-# Description : Design premium + correctifs graphiques + composants
+# Description : Design premium + anti-vibration + tous composants
 # ============================================================
 
 import streamlit as st
@@ -47,7 +47,7 @@ def apply_style():
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
-        /* ⚠️ NE PAS toucher aux polices des icônes Streamlit */
+        /* NE PAS toucher aux polices des icônes Streamlit */
         [class*="material-symbols"],
         [class*="Material Symbols"],
         [data-testid="stIconMaterial"],
@@ -64,6 +64,28 @@ def apply_style():
             padding-left: 3rem !important;
             padding-right: 3rem !important;
             max-width: 1500px !important;
+        }
+
+        /* ============================================================
+           ⚡ ANTI-VIBRATION - Désactiver les animations parasites
+           ============================================================ */
+        /* Désactiver les animations Plotly qui se rejouent à chaque re-render */
+        .js-plotly-plot,
+        .plot-container,
+        .svg-container,
+        .main-svg {
+            transition: none !important;
+            animation: none !important;
+        }
+        .js-plotly-plot * {
+            transition: none !important;
+        }
+
+        /* Garder les transitions douces uniquement sur les cartes et boutons */
+        .kpi-card,
+        .article-card,
+        .stButton > button {
+            transition: all 0.2s ease !important;
         }
 
         /* ============================================================
@@ -126,7 +148,7 @@ def apply_style():
         }
 
         /* ============================================================
-           ✅ CORRECTION DES GRAPHIQUES PLOTLY (donut, camembert, barres)
+           CORRECTION DES GRAPHIQUES PLOTLY (donut, camembert, barres)
            ============================================================ */
         div[data-testid="stPlotlyChart"] {
             padding: 8px !important;
@@ -153,7 +175,6 @@ def apply_style():
             box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04) !important;
             border: 1px solid #E9ECEF !important;
             border-left: 5px solid #E63946 !important;
-            transition: all 0.3s ease !important;
             height: 100% !important;
         }
         .kpi-card:hover {
@@ -192,7 +213,6 @@ def apply_style():
             box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
             border: 1px solid #E9ECEF !important;
             border-left: 4px solid transparent !important;
-            transition: all 0.2s ease !important;
         }
         .article-card:hover {
             box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
@@ -223,7 +243,7 @@ def apply_style():
            ============================================================ */
         .main .stButton > button {
             border-radius: 10px !important; font-weight: 600 !important;
-            padding: 0.55rem 1.4rem !important; transition: all 0.2s ease !important;
+            padding: 0.55rem 1.4rem !important;
             border: none !important; background: #E63946 !important;
             color: white !important; box-shadow: 0 2px 8px rgba(230, 57, 70, 0.2) !important;
         }
@@ -324,16 +344,16 @@ def sidebar_logout():
 
 
 # ============================================================
-# 📊 CONFIGURATION DES GRAPHIQUES PLOTLY
+# 📊 CONFIGURATION DES GRAPHIQUES PLOTLY (SANS ANIMATION)
 # ============================================================
 def configurer_graphique(fig, hauteur=350):
     """
     Configure un graphique Plotly avec des marges adaptées
-    pour éviter que les labels soient coupés.
+    et SANS ANIMATION pour éviter l'effet de vibration.
 
     Usage :
         fig = go.Figure(...)
-        style.configurer_graphique(fig)
+        style.configurer_graphique(fig, hauteur=350)
         st.plotly_chart(fig, use_container_width=True)
     """
     fig.update_layout(
@@ -342,6 +362,9 @@ def configurer_graphique(fig, hauteur=350):
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter, sans-serif", size=12, color="#1D3557"),
+        # ✅ Désactiver TOUTES les animations
+        transition=dict(duration=0, easing="linear"),
+        uirevision="static",
     )
     return fig
 
