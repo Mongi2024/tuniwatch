@@ -322,6 +322,9 @@ st.markdown("---")
 # ============================================================
 # SECTION 5 : TOP ARTICLES + DERNIERS ARTICLES
 # ============================================================
+# ============================================================
+# SECTION 5 : TOP ARTICLES + DERNIERS ARTICLES
+# ============================================================
 st.markdown("## 📰 Articles")
 st.caption("Top pertinents et dernières publications")
 st.markdown("")
@@ -335,7 +338,7 @@ with col1:
 
     if top_arts:
         for i, art in enumerate(top_arts, 1):
-            titre_complet = art["titre"] if art["titre"] else ""
+            titre_complet = art.get("titre", "") or ""
             titre_avec_num = f"{i}. {titre_complet[:85]}" + ("..." if len(titre_complet) > 85 else "")
 
             # Détecter le sentiment si dispo
@@ -352,9 +355,9 @@ with col1:
             style.article_card(
                 titre=titre_avec_num,
                 source=art.get("source", ""),
-                date=art.get("date_publication", "")[:10] if art.get("date_publication") else "",
+                date=str(art.get("date_publication", ""))[:10] if art.get("date_publication") else "",
                 sentiment=sentiment_art,
-                url=art.get("url")
+                url=art.get("url", "")
             )
     else:
         st.info("Aucun article.")
@@ -366,14 +369,14 @@ with col2:
 
     if derniers:
         for art in derniers:
-            titre_complet = art["titre"] if art["titre"] else ""
+            titre_complet = art.get("titre", "") or ""
             titre_court = titre_complet[:85] + ("..." if len(titre_complet) > 85 else "")
 
             style.article_card(
                 titre=titre_court,
                 source=art.get("source", ""),
-                date=art.get("date_publication", "")[:10] if art.get("date_publication") else "",
-                url=art.get("url")
+                date=str(art.get("date_publication", ""))[:10] if art.get("date_publication") else "",
+                url=art.get("url", "")
             )
     else:
         st.info("Aucun article.")

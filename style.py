@@ -319,6 +319,40 @@ def kpi_card(icon: str, label: str, value: str, trend: str = None, trend_type: s
         {trend_html}
     </div>
     """, unsafe_allow_html=True)
+def reparer_encodage(texte):
+    """
+    Répare les caractères mal encodés (Mojibake UTF-8 / Latin-1).
+    Exemple : 'l鈥檃bsence' → "l'absence"
+    """
+    if not texte:
+        return texte
+    
+    texte = str(texte)
+    
+    # Table de correspondance des caractères cassés fréquents
+    corrections = {
+        '鈥檕': 'ô', '鈥檃': "a", '鈥檜': "u", '鈥檈': "e", '鈥橧': "I",
+        '鈥': "'", '鈥': "'", '鈥': "'",
+        '茅': 'é', '猫': 'è', '锚': 'ê', '毛': 'ë',
+        '卯': 'î', '茂': 'ï', '么': 'ô', '没': 'û',
+        '脿': 'à', '芒': 'â', '莽': 'ç', '鹿': 'ù',
+        '聳': 'œ', '聹': 'Œ', '聻': '€',
+        '鈥': '–', '鈥': '—',
+        '芦': '«', '禄': '»',
+        '鈥': "’", '鈥': "‘",
+        '鈥': '“', '鈥': '”',
+    }
+    
+    for casse, correct in corrections.items():
+        texte = texte.replace(casse, correct)
+    
+    # Méthode plus robuste : tenter de re-décoder en UTF-8 puis Latin-1
+    try:
+        texte = texte.encode('latin-1', errors='ignore').decode('utf-8', errors='ignore')
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        pass
+    
+    return texte
 
 
 def article_card(titre: str, source: str = "", date: str = "", sentiment: str = None, url: str = None, **kwargs):
