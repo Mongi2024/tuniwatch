@@ -1,12 +1,11 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v23 - ULTIME)
+# TuniWatch - Style Professionnel (v24 - SVG natif, sans kaleido)
 # Fichier : style.py
-# Description : Anti-vibration via conversion PNG (stats garanties)
 # ============================================================
 
 import streamlit as st
 import re
-import io
+import plotly.io as pio
 
 
 def nettoyer_html(texte):
@@ -49,7 +48,7 @@ def apply_style():
             max-width: 1500px !important;
         }
 
-        /* ⚡ Anti-vibration ULTIME */
+        /* Anti-vibration */
         .js-plotly-plot,
         .js-plotly-plot *,
         .plot-container,
@@ -110,10 +109,19 @@ def apply_style():
             margin-top: 8px !important;
         }
 
-        div[data-testid="stImage"] img {
-            border-radius: 16px !important;
-            box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06) !important;
+        /* Cadre autour des graphiques SVG */
+        .graphique-svg-container {
             background: #FFFFFF !important;
+            border-radius: 16px !important;
+            padding: 12px !important;
+            box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06) !important;
+            margin-bottom: 16px !important;
+            overflow: hidden;
+        }
+        .graphique-svg-container svg {
+            display: block;
+            width: 100% !important;
+            height: auto !important;
         }
 
         .kpi-card {
@@ -247,33 +255,49 @@ def sidebar_logout():
 
 
 # ============================================================
-# 📊 AFFICHAGE GRAPHIQUE ULTIME - CONVERSION EN PNG
+# 📊 GRAPHIQUE SVG NATIF - ZÉRO ANIMATION, ZÉRO KALEIDO
 # ============================================================
 def afficher_graphique(fig, hauteur=350):
     """
-    Affiche un graphique Plotly en le CONVERTISSANT EN IMAGE PNG.
-    ⚡ ZÉRO animation, ZÉRO tremblement, rendu 100% statique.
+    Affiche un graphique Plotly en SVG natif (aucune dépendance).
+    Rendu 100% statique, aucune animation, aucun tremblement.
     """
+    # Configuration du graphique
     fig.update_layout(
         height=hauteur,
         margin=dict(l=40, r=40, t=30, b=50),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="white",
         font=dict(family="Inter, sans-serif", size=12, color="#1D3557"),
+        # Désactiver les animations
+        transition=dict(duration=0),
+        uirevision="static",
+        autosize=True,
     )
 
-    try:
-        # Convertir la figure en PNG (nécessite kaleido)
-        img_bytes = fig.to_image(format="png", width=1200, height=hauteur, scale=2)
-        st.image(img_bytes, use_container_width=True)
-    except Exception as e:
-        # Si kaleido n'est pas installé, fallback sur plotly_chart
-        st.warning(f"⚠️ Rendu image impossible (kaleido manquant ?). Affichage interactif.")
-        st.plotly_chart(
-            fig,
-            use_container_width=True,
-            config={"displayModeBar": False, "staticPlot": True, "responsive": True}
-        )
+    # ✅ Générer le HTML avec Plotly.js depuis CDN (pas de dépendance locale)
+    # + Afficher en SVG statique (pas de JS d'animation)
+    html = pio.to_html(
+        fig,
+        include_plotlyjs="cdn",
+        full_html=False,
+        config={
+            "displayModeBar": False,
+            "staticPlot": True,   # ⚡ Rendu statique, pas d'interaction
+            "responsive": True,
+            "scrollZoom": False,
+            "doubleClick": False,
+            "displaylogo": False,
+        },
+        default_width="100%",
+        default_height=hauteur,
+    )
+
+    # Afficher le graphique dans un conteneur stylé
+    st.markdown(
+        f'<div class="graphique-svg-container">{html}</div>',
+        unsafe_allow_html=True
+    )
 
 
 # ============================================================
@@ -332,6 +356,20 @@ def article_card(titre, source="", date="", sentiment=None, url=None, **kwargs):
 # ============================================================
 def appliquer_style():
     return apply_style()
+
+
+def configurer_graphique(fig, hauteur=350):
+    """Compatibilité avec l'ancienne API."""
+    fig.update_layout(
+        height=hauteur,
+        margin=dict(l=40, r=40, t=30, b=50),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="white",
+        font=dict(family="Inter, sans-serif", size=12, color="#1D3557"),
+        transition=dict(duration=0),
+        uirevision="static",
+    )
+    return fig
 
 
 def section_title(icone, titre, sous_titre=""):
