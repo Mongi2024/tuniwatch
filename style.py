@@ -1,7 +1,7 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v12 - FINAL)
+# TuniWatch - Style Professionnel (v13 - FINAL)
 # Fichier : style.py
-# Description : Bloc user en haut + bouton déconnexion en bas
+# Description : Bloc user en haut avec bouton déconnexion intégré
 # ============================================================
 
 import streamlit as st
@@ -106,35 +106,66 @@ def sidebar_user():
 
 
 # ============================================================
-# 🚪 BOUTON DÉCONNEXION (ESPACÉ POUR ÊTRE VISIBLE EN BAS)
+# 🚪 BOUTON DÉCONNEXION (DANS LE BLOC UTILISATEUR)
 # ============================================================
 def sidebar_logout():
-    """Affiche le bouton déconnexion en bas de la sidebar."""
+    """
+    Affiche le bouton déconnexion juste sous le bloc utilisateur,
+    en utilisant un positionnement fixe qui marche vraiment.
+    """
     user = st.session_state.get("user")
     if not user:
         return
 
-    # Grand espace pour pousser le bouton vers le bas de la sidebar
-    st.sidebar.markdown(
-        "<div style='height: 50vh;'></div>",
-        unsafe_allow_html=True
-    )
+    # Injection du bouton directement dans le HTML du bloc utilisateur
+    st.sidebar.markdown(f"""
+    <style>
+        /* Bouton déconnexion fixé juste sous le bloc utilisateur */
+        .logout-fixed-btn {{
+            position: fixed;
+            top: 84px;
+            left: 1rem;
+            width: 244px;
+            z-index: 1000;
+        }}
+        .logout-fixed-btn a {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(230, 57, 70, 0.12);
+            border: 1px solid rgba(230, 57, 70, 0.45);
+            border-radius: 10px;
+            color: #FF6B6B !important;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-decoration: none !important;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            box-sizing: border-box;
+        }}
+        .logout-fixed-btn a:hover {{
+            background: #E63946;
+            color: #FFFFFF !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(230, 57, 70, 0.4);
+        }}
+    </style>
+    <div class="logout-fixed-btn">
+        <a href="?logout=1" target="_self">🚪  Se déconnecter</a>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Séparateur visuel
-    st.sidebar.markdown(
-        "<hr style='border:none; border-top:1px solid rgba(255,255,255,0.15); margin: 12px 0;'>",
-        unsafe_allow_html=True
-    )
-
-    # Bouton déconnexion
-    if st.sidebar.button(
-        "🚪  Se déconnecter",
-        use_container_width=True,
-        key="btn_logout_sidebar"
-    ):
+    # Détecter le clic sur le lien
+    query_params = st.query_params
+    if query_params.get("logout") == "1":
         # Nettoyer la session
         for key in list(st.session_state.keys()):
             del st.session_state[key]
+        # Nettoyer les query params
+        st.query_params.clear()
         st.rerun()
 
 
@@ -187,9 +218,9 @@ def apply_style():
         section[data-testid="stSidebar"] * { color: #FAFAFA !important; }
 
         /* Réserver de l'espace en haut de la sidebar
-           pour ne pas cacher la navigation par le bloc utilisateur fixé */
+           pour ne pas cacher la navigation par le bloc utilisateur + bouton */
         section[data-testid="stSidebar"] > div:first-child {
-            padding-top: 90px !important;
+            padding-top: 150px !important;
         }
 
         section[data-testid="stSidebar"] nav ul li a {
@@ -207,24 +238,6 @@ def apply_style():
             font-weight: 700 !important;
         }
         section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.1) !important; }
-
-        /* ✅ STYLE DU BOUTON DÉCONNEXION DANS LA SIDEBAR */
-        section[data-testid="stSidebar"] .stButton > button {
-            background: rgba(230, 57, 70, 0.15) !important;
-            border: 1px solid rgba(230, 57, 70, 0.5) !important;
-            color: #FF6B6B !important;
-            font-weight: 600 !important;
-            border-radius: 10px !important;
-            padding: 0.55rem 1rem !important;
-            transition: all 0.2s ease !important;
-            width: 100% !important;
-        }
-        section[data-testid="stSidebar"] .stButton > button:hover {
-            background: #E63946 !important;
-            color: #FFFFFF !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 6px 16px rgba(230, 57, 70, 0.4) !important;
-        }
 
         /* CARTES KPI */
         .kpi-card {
