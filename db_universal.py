@@ -1,7 +1,7 @@
 """
 Module db_universal.py - Connexion universelle (SQLite / PostgreSQL)
 Detecte automatiquement l'environnement
-Etape K - Version finale PostgreSQL + Streamlit Secrets
+Version 0.5 - Support .env + PostgreSQL prioritaire
 """
 
 import os
@@ -13,14 +13,15 @@ DB_FILE = "tuniwatch.db"
 
 
 # ============================================================
-# CONFIGURATION POSTGRESQL (VPS)
+# CONFIGURATION POSTGRESQL (VPS + Cloud)
 # ============================================================
 def get_postgres_config():
     """
-    Recupere la config PostgreSQL depuis Streamlit Secrets (cloud)
-    ou utilise les valeurs par defaut (local).
+    Recupere la config PostgreSQL depuis :
+    1. .env (VPS)
+    2. Streamlit Secrets (cloud)
+    3. Valeurs par defaut
     """
-    # Valeurs par defaut
     config = {
         "host": "92.113.26.224",
         "port": 5432,
@@ -30,7 +31,20 @@ def get_postgres_config():
         "connect_timeout": 10
     }
 
-    # Essayer de lire depuis Streamlit Secrets (cloud)
+    # 1. Lire depuis .env (VPS)
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        if os.getenv("DB_HOST"):
+            config["host"] = os.getenv("DB_HOST")
+            config["port"] = int(os.getenv("DB_PORT", 5432))
+            config["database"] = os.getenv("DB_NAME")
+            config["user"] = os.getenv("DB_USER")
+            config["password"] = os.getenv("DB_PASSWORD")
+    except Exception:
+        pass
+
+    # 2. Lire depuis Streamlit Secrets (cloud)
     try:
         import streamlit as st
         if "DB_HOST" in st.secrets:
@@ -40,7 +54,7 @@ def get_postgres_config():
             config["user"] = st.secrets["DB_USER"]
             config["password"] = st.secrets["DB_PASSWORD"]
     except Exception:
-        pass  # Pas de Streamlit disponible (local)
+        pass
 
     return config
 
@@ -49,23 +63,44 @@ def get_postgres_config():
 POSTGRES_CONFIG = get_postgres_config()
 
 
+# ============================================================
+# DETECTION DE L'ENVIRONNEMENT
+# ============================================================
 def est_en_production():
     """
-    Detecte si on est en production (Streamlit Cloud).
+    Detecte si on est en production.
+    - VPS : IS_STREAMLIT_CLOUD=1 dans .env
+    - Streamlit Cloud : /home/appuser existe
     """
-    # Streamlit Cloud definit toujours /home/appuser
+    # 1. Variable d'environnement (VPS)
+    if os.getenv("IS_STREAMLIT_CLOUD"):
+        return True
+
+    # 2. Streamlit Cloud
     if os.path.exists("/home/appuser"):
         return True
-    # Variable d'environnement
-    if os.getenv("STREAMLIT_SHARING_MODE") or os.getenv("IS_STREAMLIT_CLOUD"):
+    if os.getenv("STREAMLIT_SHARING_MODE"):
         return True
+
+    # 3. Fichier .env avec USE_POSTGRES
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        if os.getenv("USE_POSTGRES"):
+            return True
+    except Exception:
+        pass
+
     return False
 
 
+# ============================================================
+# CONNEXION UNIVERSELLE
+# ============================================================
 def get_connexion():
     """
     Retourne une connexion a la base de donnees.
-    - PostgreSQL si on est en production (Streamlit Cloud)
+    - PostgreSQL si on est en production (VPS ou Cloud)
     - MySQL en local si dispo, sinon SQLite local
     """
     if est_en_production():
@@ -116,7 +151,6 @@ class PostgresCursorWrapper:
         self._dictionary = dictionary
 
     def execute(self, sql, params=None):
-        # PostgreSQL utilise %s comme MySQL
         if params is None:
             return self._cursor.execute(sql)
         return self._cursor.execute(sql, params)
@@ -198,7 +232,6 @@ class SQLiteCursorWrapper:
     def execute(self, sql, params=None):
         sql_traduit = sql.replace("%s", "?")
 
-        # Traduire les fonctions MySQL en SQLite
         sql_traduit = re.sub(r"\bNOW\(\)", "datetime('now')", sql_traduit)
         sql_traduit = re.sub(
             r"DATE_SUB\(datetime\('now'\), INTERVAL (\d+) DAY\)",
