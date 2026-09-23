@@ -1,7 +1,7 @@
 # ============================================================
 # TuniWatch - Dashboard Cockpit
 # Fichier : dashboard.py
-# Version : 3.0 - Anti-vibration + design premium
+# Version : 4.0 - Anti-vibration total (px + go)
 # ============================================================
 
 import streamlit as st
@@ -92,11 +92,9 @@ col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     trend = f"+{kpis['total_articles'] - 411}" if kpis['total_articles'] > 411 else None
-    style.kpi_card(
-        "📰", "Articles collectés",
-        f"{kpis['total_articles']:,}".replace(",", " "),
-        trend=trend, trend_type="positive"
-    )
+    style.kpi_card("📰", "Articles collectés",
+                   f"{kpis['total_articles']:,}".replace(",", " "),
+                   trend=trend, trend_type="positive")
 
 with col2:
     style.kpi_card("📡", "Sources actives", str(kpis["total_sources"]), trend_type="neutral")
@@ -162,8 +160,7 @@ with col1:
         df_evol = pd.DataFrame(evolution)
         fig_evol = go.Figure()
         fig_evol.add_trace(go.Scatter(
-            x=df_evol["jour"],
-            y=df_evol["nb"],
+            x=df_evol["jour"], y=df_evol["nb"],
             mode="lines",
             line=dict(color="#E63946", width=3, shape="spline"),
             fill="tozeroy",
@@ -181,20 +178,17 @@ with col2:
     if top_src:
         df_src = pd.DataFrame(top_src)
         df_src["source_court"] = df_src["source"].apply(lambda s: s[:25])
-        fig_src = px.bar(
-            df_src.sort_values("nb_articles"),
-            x="nb_articles",
-            y="source_court",
+        fig_src = go.Figure(go.Bar(
+            x=df_src.sort_values("nb_articles")["nb_articles"],
+            y=df_src.sort_values("nb_articles")["source_court"],
             orientation="h",
-            text="nb_articles",
-            color="nb_articles",
-            color_continuous_scale="Reds"
-        )
-        fig_src.update_traces(textposition="outside")
-        fig_src.update_layout(
-            xaxis_title="", yaxis_title="",
-            showlegend=False, coloraxis_showscale=False
-        )
+            text=df_src.sort_values("nb_articles")["nb_articles"],
+            textposition="outside",
+            marker=dict(color=df_src.sort_values("nb_articles")["nb_articles"],
+                        colorscale="Reds"),
+            hovertemplate="<b>%{y}</b><br>%{x} articles<extra></extra>"
+        ))
+        fig_src.update_layout(showlegend=False, xaxis_title="", yaxis_title="")
         style.afficher_graphique(fig_src, hauteur=300)
     else:
         st.info("Aucune source.")
@@ -218,19 +212,17 @@ if stats_themes:
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        fig_pie = px.pie(
-            df_themes,
-            values="nb_articles",
-            names="theme",
-            color="theme",
-            color_discrete_map=COULEURS_THEMES,
-            hole=0.55
-        )
-        fig_pie.update_traces(
-            textposition="outside",
+        # ✅ Donut SANS px, avec go.Figure
+        fig_pie = go.Figure(data=[go.Pie(
+            labels=df_themes["theme"],
+            values=df_themes["nb_articles"],
+            hole=0.55,
+            marker=dict(colors=[COULEURS_THEMES.get(t, "#95a5a6") for t in df_themes["theme"]]),
             textinfo="percent",
-            hovertemplate="<b>%{label}</b><br>%{value} articles<br>%{percent}<extra></extra>"
-        )
+            textposition="outside",
+            hovertemplate="<b>%{label}</b><br>%{value} articles<br>%{percent}<extra></extra>",
+            sort=False
+        )])
         fig_pie.update_layout(
             showlegend=True,
             legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
@@ -238,20 +230,18 @@ if stats_themes:
         style.afficher_graphique(fig_pie, hauteur=320)
 
     with col2:
-        fig_bar = px.bar(
-            df_themes.sort_values("nb_articles"),
-            x="nb_articles",
-            y="label",
+        # ✅ Barres SANS px, avec go.Figure
+        df_sorted = df_themes.sort_values("nb_articles")
+        fig_bar = go.Figure(go.Bar(
+            x=df_sorted["nb_articles"],
+            y=df_sorted["label"],
             orientation="h",
-            text="nb_articles",
-            color="nb_articles",
-            color_continuous_scale="Reds"
-        )
-        fig_bar.update_traces(textposition="outside")
-        fig_bar.update_layout(
-            xaxis_title="Articles", yaxis_title="",
-            showlegend=False, coloraxis_showscale=False
-        )
+            text=df_sorted["nb_articles"],
+            textposition="outside",
+            marker=dict(color=df_sorted["nb_articles"], colorscale="Reds"),
+            hovertemplate="<b>%{y}</b><br>%{x} articles<extra></extra>"
+        ))
+        fig_bar.update_layout(showlegend=False, xaxis_title="Articles", yaxis_title="")
         style.afficher_graphique(fig_bar, hauteur=320)
 else:
     st.info("Aucune donnée de thème disponible.")
@@ -325,17 +315,26 @@ sent_src = cockpit_stats.sentiment_par_source(8)
 if sent_src:
     df_sent_src = pd.DataFrame(sent_src)
     df_sent_src["source_court"] = df_sent_src["source"].apply(lambda s: s[:20])
-    fig_sent_src = px.bar(
-        df_sent_src,
-        x="source_court",
-        y="nb",
-        color="sentiment",
-        color_discrete_map=COULEURS_SENTIMENT,
-        barmode="stack",
-        labels={"source_court": "Source", "nb": "Articles", "sentiment": "Sentiment"}
-    )
+
+    # ✅ Barres empilées SANS px
+    sources_uniques = df_sent_src["source_court"].unique().tolist()
+    sentiments_uniques = df_sent_src["sentiment"].unique().tolist()
+
+    fig_sent_src = go.Figure()
+    for sent in sentiments_uniques:
+        df_filtre = df_sent_src[df_sent_src["sentiment"] == sent]
+        fig_sent_src.add_trace(go.Bar(
+            x=df_filtre["source_court"],
+            y=df_filtre["nb"],
+            name=sent,
+            marker=dict(color=COULEURS_SENTIMENT.get(sent, "#95a5a6")),
+            hovertemplate=f"<b>%{{x}}</b><br>{sent} : %{{y}}<extra></extra>"
+        ))
+
     fig_sent_src.update_layout(
-        xaxis_tickangle=-30, xaxis_title="", yaxis_title="Articles",
+        barmode="stack",
+        xaxis_tickangle=-30,
+        xaxis_title="", yaxis_title="Articles",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     style.afficher_graphique(fig_sent_src, hauteur=380)
