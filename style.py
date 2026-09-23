@@ -1,12 +1,12 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v14 - FUSION FINALE)
+# TuniWatch - Style Professionnel (v15 - JavaScript)
 # Fichier : style.py
-# Description : Fusion du 1er style.py (bouton déconnexion qui
-#               marchait) + design premium + composants réutilisables
+# Description : Bouton déconnexion via JavaScript (fiable à 100%)
 # ============================================================
 
 import streamlit as st
 import re
+import streamlit.components.v1 as components
 
 
 # ============================================================
@@ -41,14 +41,12 @@ def apply_style():
 
     st.markdown("""
     <style>
-        /* ============================================================
-           POLICE PRINCIPALE (sans toucher aux icônes)
-           ============================================================ */
+        /* Police principale */
         html, body, .stApp, [class*="css"] {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
-        /* ⚠️ NE PAS toucher aux polices des icônes Streamlit */
+        /* NE PAS toucher aux polices des icônes Streamlit */
         [class*="material-symbols"],
         [class*="Material Symbols"],
         [data-testid="stIconMaterial"],
@@ -56,9 +54,7 @@ def apply_style():
             font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons', sans-serif !important;
         }
 
-        /* ============================================================
-           CONTENEUR PRINCIPAL
-           ============================================================ */
+        /* CONTENEUR */
         .main .block-container {
             padding-top: 2.5rem !important;
             padding-bottom: 3rem !important;
@@ -67,28 +63,19 @@ def apply_style():
             max-width: 1500px !important;
         }
 
-        /* ============================================================
-           TITRES
-           ============================================================ */
+        /* TITRES */
         h1 { color: #1D3557 !important; font-weight: 800 !important; font-size: 2.2rem !important; letter-spacing: -0.8px !important; }
         h2 { color: #1D3557 !important; font-weight: 700 !important; font-size: 1.5rem !important; letter-spacing: -0.4px !important; }
         h3, h5 { color: #1D3557 !important; font-weight: 700 !important; }
         .stCaption, [data-testid="stCaptionContainer"] { color: #6C757D !important; font-size: 0.9rem !important; }
 
-        /* ============================================================
-           SIDEBAR
-           ============================================================ */
+        /* SIDEBAR */
         section[data-testid="stSidebar"] {
             background: linear-gradient(180deg, #1D3557 0%, #0E1117 100%) !important;
         }
         section[data-testid="stSidebar"] * { color: #FAFAFA !important; }
 
-        /* On cache la navigation native de Streamlit
-           (on garde la navigation automatique gérée par Streamlit
-            via le dossier pages/) */
-        /* section[data-testid="stSidebarNav"] { display: none !important; } */
-
-        /* Réserver de l'espace en haut pour le bloc utilisateur fixé */
+        /* Espace en haut pour le bloc utilisateur */
         section[data-testid="stSidebar"] > div:first-child {
             padding-top: 90px !important;
         }
@@ -107,30 +94,36 @@ def apply_style():
             border-left: 4px solid #E63946 !important;
             font-weight: 700 !important;
         }
-        section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.1) !important; }
 
         /* ============================================================
-           ✅ BOUTON DÉCONNEXION (styles du 1er style.py qui marchait)
+           BOUTON DÉCONNEXION (injecté par JavaScript)
            ============================================================ */
-        section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+        #tuniwatch-logout-btn {
+            position: fixed !important;
+            bottom: 20px !important;
+            left: 1rem !important;
+            width: 244px !important;
+            padding: 12px 14px !important;
             background: linear-gradient(135deg, #e70013 0%, #b8000f 100%) !important;
-            color: white !important;
-            border: none !important;
+            color: #FFFFFF !important;
             font-weight: 700 !important;
-            box-shadow: 0 3px 10px rgba(231, 0, 19, 0.25) !important;
-            border-radius: 8px !important;
-            padding: 10px 14px !important;
+            font-size: 0.9rem !important;
+            border: none !important;
+            border-radius: 10px !important;
+            cursor: pointer !important;
+            z-index: 999999 !important;
+            box-shadow: 0 4px 14px rgba(231, 0, 19, 0.4) !important;
             transition: all 0.2s ease !important;
+            text-align: center !important;
+            font-family: 'Inter', sans-serif !important;
         }
-        section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
+        #tuniwatch-logout-btn:hover {
             background: linear-gradient(135deg, #b8000f 0%, #900008 100%) !important;
             transform: translateY(-2px) !important;
-            box-shadow: 0 5px 15px rgba(231, 0, 19, 0.4) !important;
+            box-shadow: 0 8px 20px rgba(231, 0, 19, 0.5) !important;
         }
 
-        /* ============================================================
-           CARTES KPI
-           ============================================================ */
+        /* CARTES KPI */
         .kpi-card {
             background: #FFFFFF !important;
             border-radius: 16px !important;
@@ -166,9 +159,7 @@ def apply_style():
         .kpi-trend.negative { color: #EF476F !important; background: rgba(239, 71, 111, 0.12) !important; }
         .kpi-trend.neutral { color: #B8860B !important; background: rgba(255, 209, 102, 0.15) !important; }
 
-        /* ============================================================
-           CARTES ARTICLES
-           ============================================================ */
+        /* CARTES ARTICLES */
         .article-card {
             background: #FFFFFF !important;
             border-radius: 12px !important;
@@ -203,9 +194,7 @@ def apply_style():
         .badge-negatif { background: rgba(239, 71, 111, 0.15) !important; color: #EF476F !important; }
         .badge-neutre  { background: rgba(255, 209, 102, 0.2) !important;  color: #B8860B !important; }
 
-        /* ============================================================
-           BOUTONS (contenu principal)
-           ============================================================ */
+        /* BOUTONS (contenu principal) */
         .main .stButton > button {
             border-radius: 10px !important; font-weight: 600 !important;
             padding: 0.55rem 1.4rem !important; transition: all 0.2s ease !important;
@@ -218,21 +207,15 @@ def apply_style():
             box-shadow: 0 6px 16px rgba(230, 57, 70, 0.3) !important;
         }
 
-        /* ============================================================
-           SEPARATEURS
-           ============================================================ */
+        /* SEPARATEURS */
         hr { border: none !important; border-top: 1px solid #E9ECEF !important; margin: 2.5rem 0 !important; }
 
-        /* ============================================================
-           SCROLLBAR
-           ============================================================ */
+        /* SCROLLBAR */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #F8F9FA; }
         ::-webkit-scrollbar-thumb { background: #CED4DA; border-radius: 4px; }
 
-        /* ============================================================
-           CACHER LES ÉLÉMENTS STREAMLIT PARASITES
-           ============================================================ */
+        /* Cacher les éléments Streamlit */
         .stDeployButton { display: none !important; }
         #MainMenu { visibility: hidden; }
     </style>
@@ -271,7 +254,6 @@ def sidebar_user():
 
     initiale = login[0].upper() if login else "?"
 
-    # Bloc HTML utilisateur - FIXÉ EN HAUT
     st.sidebar.markdown(f"""
     <div style="
         position: fixed;
@@ -321,54 +303,55 @@ def sidebar_user():
 
 
 # ============================================================
-# 🚪 BOUTON DÉCONNEXION (MÉTHODE ÉPROUVÉE DU 1ER STYLE.PY)
+# 🚪 BOUTON DÉCONNEXION (INJECTION JAVASCRIPT)
 # ============================================================
 def sidebar_logout():
     """
-    Affiche le bouton déconnexion en bas de la sidebar.
-    Utilise la méthode du 1er style.py qui fonctionnait :
-    st.button(type="primary") + auth.deconnecter() + st.rerun()
+    Injecte un bouton de déconnexion en bas de la sidebar via JavaScript.
+    Au clic, redirige vers ?logout=1 qui déclenche la déconnexion.
     """
-    import auth
-
     user = st.session_state.get("user")
     if not user:
         return
 
-    # Grand espace pour pousser le bouton vers le bas de la sidebar
-    st.sidebar.markdown(
-        "<div style='height: 30vh;'></div>",
-        unsafe_allow_html=True
-    )
+    # Composant HTML avec JavaScript intégré
+    components.html("""
+    <script>
+        (function() {
+            // Fonction pour créer/injecter le bouton
+            function injectLogoutButton() {
+                // Supprimer l'ancien bouton s'il existe
+                const existing = document.getElementById('tuniwatch-logout-btn');
+                if (existing) existing.remove();
 
-    # Séparateur visuel
-    st.sidebar.markdown(
-        "<hr style='margin: 12px 0; border-color: rgba(255,255,255,0.15);'>",
-        unsafe_allow_html=True
-    )
+                // Vérifier qu'on est bien sur une page avec sidebar
+                const parentDoc = window.parent.document;
+                const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
+                if (!sidebar) return;
 
-    # ✅ Bouton déconnexion - méthode du 1er style.py
-    with st.sidebar:
-        if st.button(
-            "🚪  Se déconnecter",
-            use_container_width=True,
-            type="primary",
-            key=f"logout_global_{user.get('login', 'user')}"
-        ):
-            auth.deconnecter()
-            st.rerun()
+                // Créer le bouton
+                const btn = parentDoc.createElement('button');
+                btn.id = 'tuniwatch-logout-btn';
+                btn.innerHTML = '🚪 &nbsp; Se déconnecter';
+                btn.onclick = function() {
+                    // Rediriger vers ?logout=1
+                    const url = new URL(window.parent.location.href);
+                    url.searchParams.set('logout', '1');
+                    window.parent.location.href = url.toString();
+                };
 
-    # Info version en bas
-    st.sidebar.markdown(
-        "<hr style='margin: 12px 0; border-color: rgba(255,255,255,0.1);'>",
-        unsafe_allow_html=True
-    )
-    st.sidebar.markdown(
-        "<div style='text-align: center; color: #aaa; font-size: 0.7rem; padding: 5px 0;'>"
-        "Version 1.0 — Cockpit<br>© 2026 Khadraoui Mongi"
-        "</div>",
-        unsafe_allow_html=True
-    )
+                // Ajouter au body de la page parente
+                parentDoc.body.appendChild(btn);
+            }
+
+            // Injecter au chargement
+            injectLogoutButton();
+
+            // Réinjecter toutes les 1s (car Streamlit peut re-render)
+            setInterval(injectLogoutButton, 1000);
+        })();
+    </script>
+    """, height=0)
 
 
 # ============================================================
