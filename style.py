@@ -1,7 +1,7 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v11)
+# TuniWatch - Style Professionnel (v12 - FINAL)
 # Fichier : style.py
-# Description : Bloc utilisateur fixé en HAUT + déconnexion fixée en BAS
+# Description : Bloc user en haut + bouton déconnexion en bas
 # ============================================================
 
 import streamlit as st
@@ -106,26 +106,36 @@ def sidebar_user():
 
 
 # ============================================================
-# 🚪 BOUTON DÉCONNEXION (FIXÉ EN BAS DE LA SIDEBAR)
+# 🚪 BOUTON DÉCONNEXION (ESPACÉ POUR ÊTRE VISIBLE EN BAS)
 # ============================================================
 def sidebar_logout():
-    """Affiche le bouton déconnexion EN BAS de la sidebar."""
+    """Affiche le bouton déconnexion en bas de la sidebar."""
     user = st.session_state.get("user")
     if not user:
         return
 
-    # Bouton déconnexion - FIXÉ EN BAS
-    # On utilise un placeholder pour l'injecter dans la sidebar
-    with st.sidebar:
-        # Bouton caché qui sert de référence
-        if st.button(
-            "🚪  Se déconnecter",
-            use_container_width=True,
-            key="btn_logout_sidebar"
-        ):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
+    # Grand espace pour pousser le bouton vers le bas de la sidebar
+    st.sidebar.markdown(
+        "<div style='height: 50vh;'></div>",
+        unsafe_allow_html=True
+    )
+
+    # Séparateur visuel
+    st.sidebar.markdown(
+        "<hr style='border:none; border-top:1px solid rgba(255,255,255,0.15); margin: 12px 0;'>",
+        unsafe_allow_html=True
+    )
+
+    # Bouton déconnexion
+    if st.sidebar.button(
+        "🚪  Se déconnecter",
+        use_container_width=True,
+        key="btn_logout_sidebar"
+    ):
+        # Nettoyer la session
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
 
 
 # ============================================================
@@ -176,11 +186,10 @@ def apply_style():
         }
         section[data-testid="stSidebar"] * { color: #FAFAFA !important; }
 
-        /* Réserver de l'espace en haut et en bas de la sidebar
-           pour ne pas cacher la navigation */
+        /* Réserver de l'espace en haut de la sidebar
+           pour ne pas cacher la navigation par le bloc utilisateur fixé */
         section[data-testid="stSidebar"] > div:first-child {
             padding-top: 90px !important;
-            padding-bottom: 80px !important;
         }
 
         section[data-testid="stSidebar"] nav ul li a {
@@ -199,14 +208,7 @@ def apply_style():
         }
         section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.1) !important; }
 
-        /* ✅ BOUTON DÉCONNEXION FIXÉ EN BAS DE LA SIDEBAR */
-        section[data-testid="stSidebar"] .stButton {
-            position: fixed !important;
-            bottom: 20px !important;
-            left: 1rem !important;
-            width: 244px !important;
-            z-index: 1000 !important;
-        }
+        /* ✅ STYLE DU BOUTON DÉCONNEXION DANS LA SIDEBAR */
         section[data-testid="stSidebar"] .stButton > button {
             background: rgba(230, 57, 70, 0.15) !important;
             border: 1px solid rgba(230, 57, 70, 0.5) !important;
