@@ -1,7 +1,7 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v8 - avec sidebar user)
+# TuniWatch - Style Professionnel (v9)
 # Fichier : style.py
-# Description : CSS premium + sidebar utilisateur + déconnexion
+# Description : Bloc utilisateur en haut + déconnexion en bas
 # ============================================================
 
 import streamlit as st
@@ -27,12 +27,12 @@ def nettoyer_html(texte):
 
 
 # ============================================================
-# 👤 BLOC UTILISATEUR DANS LA SIDEBAR
+# 👤 BLOC UTILISATEUR (EN HAUT DE LA SIDEBAR)
 # ============================================================
 def sidebar_user():
     """
-    Affiche le bloc utilisateur connecté en haut de la sidebar
-    avec un bouton de déconnexion.
+    Affiche le bloc utilisateur connecté en HAUT de la sidebar.
+    Le bouton déconnexion est géré séparément par sidebar_logout().
     """
     user = st.session_state.get("user")
     if not user:
@@ -41,7 +41,6 @@ def sidebar_user():
     login = user.get("login", "Utilisateur")
     role = user.get("role", "user")
 
-    # Emoji selon le rôle
     emoji_role = {
         "super_admin": "👑",
         "admin": "🛡️",
@@ -50,7 +49,6 @@ def sidebar_user():
         "user": "👤",
     }.get(role, "👤")
 
-    # Libellé du rôle en français
     label_role = {
         "super_admin": "Super Admin",
         "admin": "Administrateur",
@@ -59,14 +57,13 @@ def sidebar_user():
         "user": "Utilisateur",
     }.get(role, role)
 
-    # Avatar : première lettre en majuscule
     initiale = login[0].upper() if login else "?"
 
     # Bloc HTML utilisateur
     st.sidebar.markdown(f"""
     <div style="
-        background: linear-gradient(135deg, rgba(230, 57, 70, 0.15) 0%, rgba(230, 57, 70, 0.05) 100%);
-        border: 1px solid rgba(230, 57, 70, 0.3);
+        background: linear-gradient(135deg, rgba(230, 57, 70, 0.18) 0%, rgba(230, 57, 70, 0.05) 100%);
+        border: 1px solid rgba(230, 57, 70, 0.35);
         border-radius: 12px;
         padding: 12px 14px;
         margin-bottom: 20px;
@@ -105,19 +102,44 @@ def sidebar_user():
     </div>
     """, unsafe_allow_html=True)
 
-    # Bouton de déconnexion
-    if st.sidebar.button(
-        "🚪 Se déconnecter",
-        use_container_width=True,
-        key="btn_logout_sidebar"
-    ):
-        # Nettoyer la session
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
 
-    # Séparateur
-    st.sidebar.markdown("---")
+# ============================================================
+# 🚪 BOUTON DÉCONNEXION (EN BAS DE LA SIDEBAR)
+# ============================================================
+def sidebar_logout():
+    """
+    Affiche le bouton déconnexion TOUT EN BAS de la sidebar.
+    Utilise position:fixed pour le coller en bas.
+    """
+    user = st.session_state.get("user")
+    if not user:
+        return
+
+    # Zone fixe en bas de la sidebar
+    st.sidebar.markdown("""
+    <div id="logout-zone" style="
+        position: fixed;
+        bottom: 60px;
+        left: 1rem;
+        right: 1rem;
+        max-width: 244px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+    "></div>
+    """, unsafe_allow_html=True)
+
+    # Bouton déconnexion
+    with st.sidebar:
+        if st.button(
+            "🚪  Se déconnecter",
+            use_container_width=True,
+            key="btn_logout_sidebar",
+            help="Fermer la session et revenir à l'écran de connexion"
+        ):
+            # Nettoyer la session
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
 
 
 # ============================================================
@@ -183,17 +205,36 @@ def apply_style():
         }
         section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.1) !important; }
 
-        /* Bouton déconnexion (sidebar) */
+        /* ✅ BOUTON DÉCONNEXION COLLÉ EN BAS DE LA SIDEBAR */
+        section[data-testid="stSidebar"] .stButton {
+            position: fixed !important;
+            bottom: 20px !important;
+            left: 1rem !important;
+            right: 1rem !important;
+            max-width: 244px !important;
+            z-index: 999 !important;
+            padding-top: 10px !important;
+            border-top: 1px solid rgba(255,255,255,0.1) !important;
+        }
         section[data-testid="stSidebar"] .stButton > button {
             background: rgba(230, 57, 70, 0.15) !important;
-            border: 1px solid rgba(230, 57, 70, 0.4) !important;
+            border: 1px solid rgba(230, 57, 70, 0.5) !important;
             color: #FF6B6B !important;
             font-weight: 600 !important;
             border-radius: 10px !important;
+            padding: 0.55rem 1rem !important;
+            transition: all 0.2s ease !important;
         }
         section[data-testid="stSidebar"] .stButton > button:hover {
-            background: rgba(230, 57, 70, 0.35) !important;
+            background: #E63946 !important;
             color: #FFFFFF !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 16px rgba(230, 57, 70, 0.4) !important;
+        }
+
+        /* Espace réservé en bas de la sidebar pour ne rien cacher */
+        section[data-testid="stSidebar"] > div:first-child {
+            padding-bottom: 100px !important;
         }
 
         /* CARTES KPI */
