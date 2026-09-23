@@ -1,7 +1,7 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v6 - FINAL)
+# TuniWatch - Style Professionnel (v7 - FINAL COMPLET)
 # Fichier : style.py
-# Description : CSS premium + alias pour compatibilité
+# Description : CSS premium + toutes les fonctions pour les pages
 # ============================================================
 
 import streamlit as st
@@ -12,22 +12,16 @@ import re
 # 🔧 NETTOYAGE HTML (sans toucher aux accents)
 # ============================================================
 def nettoyer_html(texte):
-    """
-    Nettoie UNIQUEMENT les balises HTML résiduelles.
-    NE TOUCHE PAS aux accents ni aux apostrophes.
-    """
+    """Nettoie UNIQUEMENT les balises HTML résiduelles."""
     if not texte:
         return ""
     texte = str(texte)
-    # Retirer uniquement les balises HTML
     texte = re.sub(r'<[^>]+>', '', texte)
-    # Décoder quelques entités HTML basiques
     texte = texte.replace('&amp;', '&')
     texte = texte.replace('&lt;', '<')
     texte = texte.replace('&gt;', '>')
     texte = texte.replace('&quot;', '"')
     texte = texte.replace('&nbsp;', ' ')
-    # Réduire les espaces multiples
     texte = re.sub(r'\s+', ' ', texte)
     return texte.strip()
 
@@ -183,14 +177,28 @@ def apply_style():
 # ============================================================
 # 🧩 COMPOSANTS RÉUTILISABLES
 # ============================================================
-def kpi_card(icon: str, label: str, value: str, trend: str = None, trend_type: str = "positive", **kwargs):
-    """Affiche une carte KPI professionnelle."""
+def kpi_card(icon, label, value, trend=None, trend_type="positive",
+             tendance=None, couleur=None, **kwargs):
+    """
+    Affiche une carte KPI professionnelle.
+    Accepte plusieurs noms de paramètres pour compatibilité :
+      - trend / tendance
+      - trend_type ("positive", "negative", "neutral")
+      - couleur (couleur de la bordure gauche)
+    """
+    # Compatibilité : tendance est un alias de trend
+    if trend is None and tendance is not None:
+        trend = tendance
+
+    # Bordure personnalisée si couleur fournie
+    border_style = f"border-left: 5px solid {couleur} !important;" if couleur else ""
+
     trend_html = ""
     if trend:
         trend_html = f'<span class="kpi-trend {trend_type}">{trend}</span>'
 
     st.markdown(f"""
-    <div class="kpi-card">
+    <div class="kpi-card" style="{border_style}">
         <span class="kpi-icon">{icon}</span>
         <div class="kpi-label">{label}</div>
         <div class="kpi-value">{value}</div>
@@ -199,12 +207,12 @@ def kpi_card(icon: str, label: str, value: str, trend: str = None, trend_type: s
     """, unsafe_allow_html=True)
 
 
-def article_card(titre: str, source: str = "", date: str = "", sentiment: str = None, url: str = None, **kwargs):
+def article_card(titre, source="", date="", sentiment=None, url=None, **kwargs):
     """
     Affiche une carte d'article professionnelle.
-    ⚠️ AUCUNE transformation d'encodage : on affiche le titre TEL QUEL.
+    Accepte des paramètres supplémentaires (score, theme, emoji_theme, etc.)
+    sans planter.
     """
-    # On retire UNIQUEMENT le HTML, PAS les accents ni apostrophes
     titre_propre = nettoyer_html(titre)
     source_propre = nettoyer_html(source)
     date_propre = str(date or "").strip()
@@ -249,12 +257,10 @@ def article_card(titre: str, source: str = "", date: str = "", sentiment: str = 
 
 # ============================================================
 # 🔗 ALIAS POUR COMPATIBILITÉ
-# (les anciennes pages appellent style.appliquer_style(),
-#  style.section_title() et style.footer())
 # ============================================================
 
 def appliquer_style():
-    """Alias de apply_style() pour compatibilité avec les anciennes pages."""
+    """Alias de apply_style() pour compatibilité."""
     return apply_style()
 
 
@@ -264,6 +270,33 @@ def section_title(icone, titre, sous_titre=""):
     if sous_titre:
         st.caption(sous_titre)
     st.markdown("")
+
+
+def page_header(titre, icone="", description="", badge=None):
+    """
+    Affiche un en-tête de page premium.
+    Utilisé par les pages Accueil, Analyse, Recherche, Médias, Actualités.
+    """
+    badge_html = ""
+    if badge:
+        badge_html = (
+            f'<span style="display:inline-block; padding:0.15rem 0.6rem; '
+            f'background:rgba(230,57,70,0.12); color:#E63946; '
+            f'border-radius:20px; font-size:0.75rem; font-weight:700; '
+            f'margin-left:0.5rem;">{badge}</span>'
+        )
+
+    st.markdown(f"""
+    <div style="padding: 1rem 0 1.5rem 0;">
+        <h1 style="margin:0; color:#1D3557; font-weight:800; font-size:2.4rem; letter-spacing:-1px;">
+            {icone} {titre} {badge_html}
+        </h1>
+        <p style="color:#6C757D; font-size:1rem; margin-top:0.5rem; margin-bottom:0;">
+            {description}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("---")
 
 
 def footer():
