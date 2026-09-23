@@ -1,16 +1,12 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v20 - FINAL)
+# TuniWatch - Style Professionnel (v21 - ANTI-VIBRATION TOTAL)
 # Fichier : style.py
-# Description : Design premium + anti-vibration + tous composants
 # ============================================================
 
 import streamlit as st
 import re
 
 
-# ============================================================
-# 🔧 NETTOYAGE HTML
-# ============================================================
 def nettoyer_html(texte):
     if not texte:
         return ""
@@ -25,9 +21,6 @@ def nettoyer_html(texte):
     return texte.strip()
 
 
-# ============================================================
-# 🎨 APPLICATION DU STYLE
-# ============================================================
 def apply_style():
     st.markdown("""
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -57,27 +50,40 @@ def apply_style():
             max-width: 1500px !important;
         }
 
-        /* ============ ⚡ ANTI-VIBRATION ============ */
+        /* ============ ⚡ ANTI-VIBRATION TOTAL ============ */
+        /* Tous les éléments Plotly : aucune transition, aucune animation */
         .js-plotly-plot,
+        .js-plotly-plot *,
         .plot-container,
+        .plot-container *,
         .svg-container,
+        .svg-container *,
         .main-svg,
-        .js-plotly-plot svg,
-        .js-plotly-plot path,
-        .js-plotly-plot g,
-        .js-plotly-plot circle,
-        .js-plotly-plot line,
-        .js-plotly-plot rect,
-        .js-plotly-plot text,
+        .main-svg *,
+        .plotly,
+        .plotly * {
+            transition: none !important;
+            animation: none !important;
+            -webkit-transition: none !important;
+            -webkit-animation: none !important;
+            opacity: 1 !important;
+        }
+
+        /* Forcer l'opacité des traces */
         .js-plotly-plot .trace,
         .js-plotly-plot .scatterlayer,
         .js-plotly-plot .barlayer,
-        .js-plotly-plot .pielayer {
+        .js-plotly-plot .pielayer,
+        .js-plotly-plot .points path,
+        .js-plotly-plot .lines path,
+        .js-plotly-plot .bars path {
+            opacity: 1 !important;
             transition: none !important;
             animation: none !important;
-            opacity: 1 !important;
         }
-        .kpi-card, .article-card, .stButton > button {
+
+        /* Exceptions : garder les transitions sur cartes/boutons */
+        .kpi-card, .article-card, .main .stButton > button {
             transition: all 0.2s ease !important;
         }
 
@@ -278,33 +284,67 @@ def sidebar_logout():
 
 
 # ============================================================
-# 📊 GRAPHIQUES SANS ANIMATION
+# 📊 GRAPHIQUES SANS ANIMATION (v2 - anti-vibration total)
 # ============================================================
 def configurer_graphique(fig, hauteur=350):
+    """
+    Configure un graphique Plotly SANS AUCUNE animation.
+    Fonctionne avec go.Figure ET px (Plotly Express).
+    """
     fig.update_layout(
         height=hauteur,
         margin=dict(l=40, r=40, t=30, b=50),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter, sans-serif", size=12, color="#1D3557"),
+        # ✅ Désactiver les transitions
         transition=dict(duration=0, easing="linear"),
+        # ✅ Garder l'état entre les re-renders
         uirevision="static",
+        # ✅ Pas d'animation de frame
+        updatemenus=[],
     )
+
+    # ✅ Désactiver les animations sur les traces individuelles
+    fig.update_traces(
+        # scatter
+        line=dict(width=None),
+        # bar / pie
+        # (aucun paramètre spécifique ici car update_traces accepte tout)
+    )
+
     return fig
 
 
 def afficher_graphique(fig, hauteur=350):
-    """Affiche un graphique Plotly SANS animation."""
+    """
+    Affiche un graphique Plotly SANS AUCUNE animation.
+    À utiliser à la place de st.plotly_chart().
+    Compatible avec go.Figure et px (Plotly Express).
+    """
+    # Configuration des layout et traces
     configurer_graphique(fig, hauteur)
+
+    # Configuration Plotly côté client (désactive les animations JS)
     plotly_config = {
         "displayModeBar": False,
-        "staticPlot": False,
+        "staticPlot": False,       # Garde le hover
         "responsive": True,
         "scrollZoom": False,
         "doubleClick": False,
         "showTips": False,
         "displaylogo": False,
+        "modeBarButtonsToRemove": [
+            "toImage", "sendDataToCloud", "editInChartStudio",
+            "hoverCompareCartesian", "hoverClosestCartesian",
+            "toggleSpikelines", "resetScale2d", "zoomIn2d", "zoomOut2d",
+            "autoScale2d"
+        ],
+        "toImageButtonOptions": {"format": "png"},
+        # ✅ Clé finale : désactiver les animations JS
+        "transitionDuration": 0,
     }
+
     st.plotly_chart(fig, use_container_width=True, config=plotly_config)
 
 
