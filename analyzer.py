@@ -1,8 +1,7 @@
 """
 Module analyzer.py - Analyse automatique des articles
 Detecte les themes dans chaque article via les mots-cles
-Version 0.4 - Avec db_universal
-Etape F - Session 2
+Version 0.5 - Avec db_universal + support PostgreSQL + articles_sentiment
 """
 
 from db_universal import get_connexion
@@ -18,13 +17,7 @@ SEUIL_MINIMUM = 1.0
 # NORMALISATION DU TEXTE
 # ============================================================
 def normaliser_texte(texte):
-    """
-    Normalise un texte pour la recherche :
-    - Minuscules
-    - Suppression des accents (pour le francais)
-    - Suppression des diacritiques arabes
-    - Conservation des caracteres arabes
-    """
+    """Normalise un texte pour la recherche."""
     if not texte:
         return ""
 
@@ -41,41 +34,26 @@ def normaliser_texte(texte):
 # DETECTION DE CONTEXTE TUNISIEN
 # ============================================================
 MOTS_TUNISIE = [
-    # Pays et adjectifs
     "tunisie", "tunisien", "tunisienne", "tunisiens", "tunisiennes",
-
-    # Villes et regions
     "tunis", "sfax", "sousse", "kairouan", "bizerte", "gabes",
     "ariana", "gafsa", "monastir", "nabeul", "kasserine",
     "medenine", "tataouine", "kebili", "tozeur", "siliana",
     "zaghouan", "beja", "jendouba", "mahdia", "kef", "sidi bouzid",
     "ben arous", "manouba", "ben guerdane", "djerba",
-
-    # Clubs sportifs tunisiens
     "jsk", "est", "ca", "css", "ess", "cab", "usm", "asg",
     "esperance", "club africain", "etoile du sahel", "cs sfaxien",
     "esperance sportive", "etoile sportive", "es tunis",
     "stade tunisien", "stade tunisienne", "js kairouan",
-
-    # Institutions et lieux
     "kasbah", "bardo", "carthage", "la marsa", "la goulette",
     "hammamet", "zarzis",
-
-    # Medias et chaines tunisiennes
     "mosaique", "shems", "jawhara", "express fm", "watania",
     "tunisia tv", "nessma", "hannibal", "el hiwar",
-
-    # Arabe - Pays et adjectifs
     "تونس", "تونسي", "تونسية", "التونسي", "التونسية",
-
-    # Arabe - Villes et regions
     "صفاقس", "سوسة", "القيروان", "بنزرت", "قابس",
     "أريانة", "قفصة", "المنستير", "نابل", "القصرين",
     "مدنين", "تطاوين", "قبلي", "توزر", "سليانة",
     "زغوان", "باجة", "جندوبة", "المهدية", "الكاف",
     "سيدي بوزيد", "بن عروس", "منوبة", "جربة",
-
-    # Arabizi
     "tounes", "tounsi", "tounsiya"
 ]
 
@@ -150,7 +128,6 @@ def analyser_article(titre, description, themes_mots):
     if not texte_complet:
         return {}
 
-    # FILTRE INTELLIGENT
     est_tunisien = est_article_tunisien(texte_complet)
 
     if not est_tunisien:
@@ -187,10 +164,13 @@ def analyser_article(titre, description, themes_mots):
 
 
 # ============================================================
-# ANALYSE DE TOUS LES ARTICLES
+# ✅ ANALYSE DE TOUS LES ARTICLES (VERSION CORRIGÉE)
 # ============================================================
 def analyser_articles_en_base(limite=None, reanalyser=False):
-    """Analyse tous les articles en base."""
+    """
+    Analyse tous les articles en base.
+    ✅ Remplit articles_themes (thèmes détectés)
+    """
     from datetime import datetime
     debut = datetime.now()
 
@@ -259,7 +239,7 @@ def analyser_articles_en_base(limite=None, reanalyser=False):
                             ", ".join(data["mots"][:20])
                         ))
                         total_analyses += 1
-                    except Exception:
+                    except Exception as e:
                         # Ignorer les erreurs (doublons, etc.)
                         pass
 
@@ -275,6 +255,110 @@ def analyser_articles_en_base(limite=None, reanalyser=False):
         return {
             "analyses": total_analyses,
             "articles_traites": total_articles,
+            "duree": duree
+        }
+
+    except Exception as e:
+        print(f"Erreur : {e}")
+        return None
+    finally:
+        curseur.close()
+        conn.close()
+
+
+# ============================================================
+# ✅ ANALYSE DES SENTIMENTS (NOUVELLE FONCTION)
+# ============================================================
+def analyser_sentiments_en_base(limite=None, reanalyser=False):
+    """
+    Analyse le sentiment des articles et remplit articles_sentiment.
+    Utilise les colonnes 'sentiment' et 'mot_cle' de la table articles
+    (déjà remplies par n8n via Ollama).
+    """
+    from datetime import datetime
+    debut = datetime.now()
+
+    conn = get_connexion()
+    if conn is None:
+        return None
+
+    curseur = conn.cursor(dictionary=True)
+
+    try:
+        if reanalyser:
+            requete = """
+                SELECT id, titre, sentiment, mot_cle
+                FROM articles
+                WHERE sentiment IS NOT NULL
+            """
+        else:
+            requete = """
+                SELECT id, titre, sentiment, mot_cle
+                FROM articles
+                WHERE sentiment IS NOT NULL
+                  AND id NOT IN (SELECT DISTINCT article_id FROM articles_sentiment)
+            """
+
+        if limite:
+            requete += f" LIMIT {limite}"
+
+        curseur.execute(requete)
+        articles = curseur.fetchall()
+
+        print(f"Articles a analyser (sentiment) : {len(articles)}")
+        print()
+
+        if not articles:
+            print("Aucun article a analyser.")
+            return {"analyses": 0, "articles_traites": 0, "duree": 0}
+
+        curseur2 = conn.cursor()
+        total_analyses = 0
+
+        for i, art in enumerate(articles, 1):
+            if i % 50 == 0:
+                print(f"   Traitement : {i}/{len(articles)}...")
+
+            sentiment = art.get("sentiment")
+            if sentiment is None:
+                continue
+
+            # Déduire la catégorie de sentiment depuis le score
+            # Convention : score > 0.1 → positif, score < -0.1 → négatif, sinon neutre
+            try:
+                score = float(sentiment)
+            except (TypeError, ValueError):
+                continue
+
+            if score > 0.1:
+                categorie = "positif"
+            elif score < -0.1:
+                categorie = "negatif"
+            else:
+                categorie = "neutre"
+
+            try:
+                curseur2.execute("""
+                    INSERT INTO articles_sentiment
+                        (article_id, sentiment, score)
+                    VALUES (%s, %s, %s)
+                """, (art["id"], categorie, score))
+                total_analyses += 1
+            except Exception as e:
+                # Ignorer les erreurs (doublons, etc.)
+                pass
+
+        conn.commit()
+
+        duree = (datetime.now() - debut).total_seconds()
+
+        print()
+        print(f"Analyse terminee en {duree:.1f} secondes")
+        print(f"   Analyses sentiment creees : {total_analyses}")
+
+        return {
+            "analyses": total_analyses,
+            "articles_traites": len(articles),
             "duree": duree
         }
 
@@ -323,7 +407,7 @@ def stats_themes():
 
 
 def compter_analyses():
-    """Compte le nombre total d'analyses."""
+    """Compte le nombre total d'analyses de thèmes."""
     conn = get_connexion()
     if conn is None:
         return 0
@@ -351,7 +435,6 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
 
-    # Test 1 : Charger les mots-cles
     print("1. Chargement des mots-cles...")
     themes = charger_mots_par_theme()
     print(f"   {len(themes)} themes :")
@@ -359,29 +442,22 @@ if __name__ == "__main__":
         print(f"      - {t} : {len(mots)} mots")
     print()
 
-    # Test 2 : Article tunisien classique
     print("2. Test article tunisien :")
     titre_test = "Violence conjugale : une femme agressée à Tunis"
     desc_test = "Un homme a été arrêté après avoir frappé son épouse."
-
     resultats = analyser_article(titre_test, desc_test, themes)
     print(f"   Titre : {titre_test}")
-    print(f"   Themes detectes :")
     for theme, data in resultats.items():
         print(f"      - {theme} : score={data['score']}, mots={data['nb_mots']}")
     print()
 
-    # Test 3 : Article sportif tunisien (avec club)
     print("3. Test article sportif :")
     titre_test2 = "Violences à la salle Aziz Miled : 4 matches à huis clos contre la JSK"
     resultats2 = analyser_article(titre_test2, "", themes)
-    print(f"   Titre : {titre_test2}")
-    print(f"   Themes detectes :")
     for theme, data in resultats2.items():
         print(f"      - {theme} : score={data['score']}")
     print()
 
-    # Test 4 : Article etranger (doit etre rejete)
     print("4. Test article NON-tunisien :")
     titre_test3 = "L'extrême droite perd du terrain en Suède"
     resultats3 = analyser_article(titre_test3, "", themes)
@@ -391,7 +467,6 @@ if __name__ == "__main__":
         print(f"   OK : article etranger rejete")
     print()
 
-    # Test 5 : Stats actuelles
     print("5. Statistiques actuelles :")
     print(f"   Analyses en base : {compter_analyses()}")
     print()
