@@ -1,9 +1,10 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v24 - SVG natif, sans kaleido)
+# TuniWatch - Style Professionnel (v25 - CORRIGÉ FINAL)
 # Fichier : style.py
 # ============================================================
 
 import streamlit as st
+import streamlit.components.v1 as components
 import re
 import plotly.io as pio
 
@@ -59,8 +60,6 @@ def apply_style():
         .main-svg * {
             transition: none !important;
             animation: none !important;
-            -webkit-transition: none !important;
-            -webkit-animation: none !important;
         }
 
         h1 { color: #1D3557 !important; font-weight: 800 !important; font-size: 2.2rem !important; letter-spacing: -0.8px !important; }
@@ -109,19 +108,9 @@ def apply_style():
             margin-top: 8px !important;
         }
 
-        /* Cadre autour des graphiques SVG */
-        .graphique-svg-container {
-            background: #FFFFFF !important;
+        iframe[title*="plotly"] {
             border-radius: 16px !important;
-            padding: 12px !important;
             box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06) !important;
-            margin-bottom: 16px !important;
-            overflow: hidden;
-        }
-        .graphique-svg-container svg {
-            display: block;
-            width: 100% !important;
-            height: auto !important;
         }
 
         .kpi-card {
@@ -255,12 +244,14 @@ def sidebar_logout():
 
 
 # ============================================================
-# 📊 GRAPHIQUE SVG NATIF - ZÉRO ANIMATION, ZÉRO KALEIDO
+# 📊 GRAPHIQUE SANS ANIMATION (CORRIGÉ - iframe components)
 # ============================================================
 def afficher_graphique(fig, hauteur=350):
     """
-    Affiche un graphique Plotly en SVG natif (aucune dépendance).
-    Rendu 100% statique, aucune animation, aucun tremblement.
+    Affiche un graphique Plotly SANS animation via components.html().
+    ✅ Le graphique s'affiche correctement
+    ✅ Aucune animation
+    ✅ Rendu stable
     """
     # Configuration du graphique
     fig.update_layout(
@@ -269,21 +260,19 @@ def afficher_graphique(fig, hauteur=350):
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="white",
         font=dict(family="Inter, sans-serif", size=12, color="#1D3557"),
-        # Désactiver les animations
-        transition=dict(duration=0),
+        transition=dict(duration=0, easing="linear"),
         uirevision="static",
         autosize=True,
     )
 
-    # ✅ Générer le HTML avec Plotly.js depuis CDN (pas de dépendance locale)
-    # + Afficher en SVG statique (pas de JS d'animation)
+    # ✅ Générer le HTML complet avec Plotly.js inclus
     html = pio.to_html(
         fig,
         include_plotlyjs="cdn",
         full_html=False,
         config={
             "displayModeBar": False,
-            "staticPlot": True,   # ⚡ Rendu statique, pas d'interaction
+            "staticPlot": False,       # ⚡ False pour que ça s'affiche
             "responsive": True,
             "scrollZoom": False,
             "doubleClick": False,
@@ -293,10 +282,23 @@ def afficher_graphique(fig, hauteur=350):
         default_height=hauteur,
     )
 
-    # Afficher le graphique dans un conteneur stylé
-    st.markdown(
-        f'<div class="graphique-svg-container">{html}</div>',
-        unsafe_allow_html=True
+    # ✅ Afficher dans un iframe (permet le JS)
+    components.html(
+        f"""
+        <html>
+        <head>
+            <style>
+                body {{ margin: 0; padding: 0; background: transparent; }}
+                .plotly-graph-div {{ border-radius: 16px; }}
+            </style>
+        </head>
+        <body>
+            {html}
+        </body>
+        </html>
+        """,
+        height=hauteur + 20,
+        scrolling=False,
     )
 
 
@@ -359,7 +361,6 @@ def appliquer_style():
 
 
 def configurer_graphique(fig, hauteur=350):
-    """Compatibilité avec l'ancienne API."""
     fig.update_layout(
         height=hauteur,
         margin=dict(l=40, r=40, t=30, b=50),
