@@ -1,19 +1,16 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v15 - JavaScript)
+# TuniWatch - Style Professionnel (v16 - SOLUTION SIMPLE)
 # Fichier : style.py
-# Description : Bouton déconnexion via JavaScript (fiable à 100%)
 # ============================================================
 
 import streamlit as st
 import re
-import streamlit.components.v1 as components
 
 
 # ============================================================
 # 🔧 NETTOYAGE HTML
 # ============================================================
 def nettoyer_html(texte):
-    """Nettoie UNIQUEMENT les balises HTML résiduelles."""
     if not texte:
         return ""
     texte = str(texte)
@@ -31,8 +28,6 @@ def nettoyer_html(texte):
 # 🎨 APPLICATION DU STYLE
 # ============================================================
 def apply_style():
-    """Applique le style CSS personnalisé à l'application."""
-
     st.markdown("""
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,20 +36,15 @@ def apply_style():
 
     st.markdown("""
     <style>
-        /* Police principale */
         html, body, .stApp, [class*="css"] {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
-
-        /* NE PAS toucher aux polices des icônes Streamlit */
         [class*="material-symbols"],
         [class*="Material Symbols"],
         [data-testid="stIconMaterial"],
         span[translate="no"] {
             font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons', sans-serif !important;
         }
-
-        /* CONTENEUR */
         .main .block-container {
             padding-top: 2.5rem !important;
             padding-bottom: 3rem !important;
@@ -62,8 +52,6 @@ def apply_style():
             padding-right: 3rem !important;
             max-width: 1500px !important;
         }
-
-        /* TITRES */
         h1 { color: #1D3557 !important; font-weight: 800 !important; font-size: 2.2rem !important; letter-spacing: -0.8px !important; }
         h2 { color: #1D3557 !important; font-weight: 700 !important; font-size: 1.5rem !important; letter-spacing: -0.4px !important; }
         h3, h5 { color: #1D3557 !important; font-weight: 700 !important; }
@@ -75,19 +63,12 @@ def apply_style():
         }
         section[data-testid="stSidebar"] * { color: #FAFAFA !important; }
 
-        /* Espace en haut pour le bloc utilisateur */
-        section[data-testid="stSidebar"] > div:first-child {
-            padding-top: 90px !important;
-        }
-
         section[data-testid="stSidebar"] nav ul li a {
             border-radius: 10px !important;
             padding: 0.6rem 1rem !important;
-            transition: all 0.2s ease !important;
         }
         section[data-testid="stSidebar"] nav ul li a:hover {
             background: rgba(230, 57, 70, 0.2) !important;
-            transform: translateX(4px) !important;
         }
         section[data-testid="stSidebar"] nav ul li a[aria-current="page"] {
             background: rgba(230, 57, 70, 0.35) !important;
@@ -95,32 +76,40 @@ def apply_style():
             font-weight: 700 !important;
         }
 
-        /* ============================================================
-           BOUTON DÉCONNEXION (injecté par JavaScript)
-           ============================================================ */
-        #tuniwatch-logout-btn {
-            position: fixed !important;
-            bottom: 20px !important;
-            left: 1rem !important;
-            width: 244px !important;
-            padding: 12px 14px !important;
-            background: linear-gradient(135deg, #e70013 0%, #b8000f 100%) !important;
-            color: #FFFFFF !important;
-            font-weight: 700 !important;
-            font-size: 0.9rem !important;
-            border: none !important;
-            border-radius: 10px !important;
-            cursor: pointer !important;
-            z-index: 999999 !important;
-            box-shadow: 0 4px 14px rgba(231, 0, 19, 0.4) !important;
-            transition: all 0.2s ease !important;
-            text-align: center !important;
-            font-family: 'Inter', sans-serif !important;
+        /* ✅ EXPANDER UTILISATEUR EN HAUT DE LA SIDEBAR */
+        section[data-testid="stSidebar"] details {
+            background: linear-gradient(135deg, rgba(230, 57, 70, 0.2) 0%, rgba(230, 57, 70, 0.06) 100%) !important;
+            border: 1px solid rgba(230, 57, 70, 0.4) !important;
+            border-radius: 12px !important;
+            margin-bottom: 12px !important;
+            padding: 4px 8px !important;
         }
-        #tuniwatch-logout-btn:hover {
+        section[data-testid="stSidebar"] details summary {
+            font-weight: 700 !important;
+            color: #FFD166 !important;
+            padding: 8px 4px !important;
+            cursor: pointer !important;
+        }
+        section[data-testid="stSidebar"] details[open] summary {
+            border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+            margin-bottom: 8px !important;
+        }
+
+        /* Bouton déconnexion dans l'expander */
+        section[data-testid="stSidebar"] details .stButton > button {
+            background: linear-gradient(135deg, #e70013 0%, #b8000f 100%) !important;
+            color: white !important;
+            border: none !important;
+            font-weight: 700 !important;
+            border-radius: 8px !important;
+            padding: 10px 14px !important;
+            width: 100% !important;
+            margin-top: 8px !important;
+        }
+        section[data-testid="stSidebar"] details .stButton > button:hover {
             background: linear-gradient(135deg, #b8000f 0%, #900008 100%) !important;
             transform: translateY(-2px) !important;
-            box-shadow: 0 8px 20px rgba(231, 0, 19, 0.5) !important;
+            box-shadow: 0 5px 15px rgba(231, 0, 19, 0.4) !important;
         }
 
         /* CARTES KPI */
@@ -131,8 +120,8 @@ def apply_style():
             box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04) !important;
             border: 1px solid #E9ECEF !important;
             border-left: 5px solid #E63946 !important;
-            transition: all 0.3s ease !important;
             height: 100% !important;
+            transition: all 0.3s ease !important;
         }
         .kpi-card:hover {
             transform: translateY(-6px) !important;
@@ -168,54 +157,35 @@ def apply_style():
             box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
             border: 1px solid #E9ECEF !important;
             border-left: 4px solid transparent !important;
-            transition: all 0.2s ease !important;
         }
         .article-card:hover {
             box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
             border-left-color: #E63946 !important;
             transform: translateX(4px) !important;
         }
-        .article-title {
-            font-weight: 600 !important; color: #1D3557 !important;
-            font-size: 0.95rem !important; margin-bottom: 0.5rem !important;
-            line-height: 1.4 !important;
-        }
-        .article-meta {
-            font-size: 0.78rem !important; color: #6C757D !important;
-            display: flex !important; gap: 0.8rem !important;
-            flex-wrap: wrap !important; align-items: center !important;
-        }
-        .article-badge {
-            display: inline-block !important; padding: 0.15rem 0.6rem !important;
-            border-radius: 20px !important; font-size: 0.68rem !important;
-            font-weight: 700 !important; text-transform: uppercase !important;
-        }
+        .article-title { font-weight: 600 !important; color: #1D3557 !important; font-size: 0.95rem !important; margin-bottom: 0.5rem !important; line-height: 1.4 !important; }
+        .article-meta { font-size: 0.78rem !important; color: #6C757D !important; display: flex !important; gap: 0.8rem !important; flex-wrap: wrap !important; align-items: center !important; }
+        .article-badge { display: inline-block !important; padding: 0.15rem 0.6rem !important; border-radius: 20px !important; font-size: 0.68rem !important; font-weight: 700 !important; text-transform: uppercase !important; }
         .badge-positif { background: rgba(6, 214, 160, 0.15) !important; color: #06D6A0 !important; }
         .badge-negatif { background: rgba(239, 71, 111, 0.15) !important; color: #EF476F !important; }
         .badge-neutre  { background: rgba(255, 209, 102, 0.2) !important;  color: #B8860B !important; }
 
-        /* BOUTONS (contenu principal) */
+        /* BOUTONS (contenu) */
         .main .stButton > button {
             border-radius: 10px !important; font-weight: 600 !important;
-            padding: 0.55rem 1.4rem !important; transition: all 0.2s ease !important;
+            padding: 0.55rem 1.4rem !important;
             border: none !important; background: #E63946 !important;
-            color: white !important; box-shadow: 0 2px 8px rgba(230, 57, 70, 0.2) !important;
+            color: white !important;
         }
         .main .stButton > button:hover {
             background: #C1121F !important;
             transform: translateY(-2px) !important;
-            box-shadow: 0 6px 16px rgba(230, 57, 70, 0.3) !important;
         }
 
-        /* SEPARATEURS */
         hr { border: none !important; border-top: 1px solid #E9ECEF !important; margin: 2.5rem 0 !important; }
-
-        /* SCROLLBAR */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #F8F9FA; }
         ::-webkit-scrollbar-thumb { background: #CED4DA; border-radius: 4px; }
-
-        /* Cacher les éléments Streamlit */
         .stDeployButton { display: none !important; }
         #MainMenu { visibility: hidden; }
     </style>
@@ -223,10 +193,12 @@ def apply_style():
 
 
 # ============================================================
-# 👤 BLOC UTILISATEUR (FIXÉ EN HAUT DE LA SIDEBAR)
+# 👤 BLOC UTILISATEUR (EXPANDER EN HAUT DE LA SIDEBAR)
 # ============================================================
 def sidebar_user():
-    """Affiche le bloc utilisateur connecté en HAUT de la sidebar."""
+    """Affiche l'utilisateur + bouton déconnexion dans un expander."""
+    import auth
+
     user = st.session_state.get("user")
     if not user:
         return
@@ -235,123 +207,64 @@ def sidebar_user():
     role = user.get("role", "user")
 
     emoji_role = {
-        "super_admin": "👑",
-        "admin": "🛡️",
-        "editeur": "✏️",
-        "lecteur": "👤",
-        "viewer": "👤",
-        "user": "👤",
+        "super_admin": "👑", "admin": "🛡️", "editeur": "✏️",
+        "lecteur": "👤", "viewer": "👤", "user": "👤",
     }.get(role, "👤")
 
     label_role = {
-        "super_admin": "Super Admin",
-        "admin": "Administrateur",
-        "editeur": "Éditeur",
-        "lecteur": "Lecteur",
-        "viewer": "Lecteur",
-        "user": "Utilisateur",
+        "super_admin": "Super Admin", "admin": "Administrateur",
+        "editeur": "Éditeur", "lecteur": "Lecteur",
+        "viewer": "Lecteur", "user": "Utilisateur",
     }.get(role, role)
 
     initiale = login[0].upper() if login else "?"
 
-    st.sidebar.markdown(f"""
-    <div style="
-        position: fixed;
-        top: 1rem;
-        left: 1rem;
-        width: 244px;
-        background: linear-gradient(135deg, rgba(230, 57, 70, 0.25) 0%, rgba(230, 57, 70, 0.08) 100%);
-        border: 1px solid rgba(230, 57, 70, 0.4);
-        border-radius: 12px;
-        padding: 12px 14px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        z-index: 1000;
-        backdrop-filter: blur(8px);
-    ">
-        <div style="
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background: #E63946;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 1.1rem;
-            flex-shrink: 0;
-        ">{initiale}</div>
-        <div style="flex: 1; overflow: hidden;">
+    # ✅ EXPANDER qui contient le bloc user + bouton déconnexion
+    with st.sidebar:
+        with st.expander(f"👤  {login}  ({emoji_role} {label_role})", expanded=True):
+            # Bloc visuel utilisateur
+            st.markdown(f"""
             <div style="
-                color: #FFFFFF;
-                font-weight: 700;
-                font-size: 0.9rem;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            ">{login}</div>
-            <div style="
-                color: #FFD166;
-                font-size: 0.75rem;
-                font-weight: 600;
-            ">{emoji_role} {label_role}</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 8px 0;
+            ">
+                <div style="
+                    width: 44px; height: 44px;
+                    border-radius: 50%;
+                    background: #E63946;
+                    color: white;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: 800;
+                    font-size: 1.1rem;
+                    flex-shrink: 0;
+                ">{initiale}</div>
+                <div style="flex: 1;">
+                    <div style="color: #FFFFFF; font-weight: 700; font-size: 0.95rem;">{login}</div>
+                    <div style="color: #FFD166; font-size: 0.78rem; font-weight: 600;">{emoji_role} {label_role}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # ✅ BOUTON DÉCONNEXION
+            if st.button(
+                "🚪  Se déconnecter",
+                use_container_width=True,
+                key=f"logout_{login}"
+            ):
+                auth.deconnecter()
+                st.rerun()
 
 
 # ============================================================
-# 🚪 BOUTON DÉCONNEXION (INJECTION JAVASCRIPT)
+# 🚪 FONCTION LOGOUT VIDE (pour compatibilité auth.py)
 # ============================================================
 def sidebar_logout():
-    """
-    Injecte un bouton de déconnexion en bas de la sidebar via JavaScript.
-    Au clic, redirige vers ?logout=1 qui déclenche la déconnexion.
-    """
-    user = st.session_state.get("user")
-    if not user:
-        return
-
-    # Composant HTML avec JavaScript intégré
-    components.html("""
-    <script>
-        (function() {
-            // Fonction pour créer/injecter le bouton
-            function injectLogoutButton() {
-                // Supprimer l'ancien bouton s'il existe
-                const existing = document.getElementById('tuniwatch-logout-btn');
-                if (existing) existing.remove();
-
-                // Vérifier qu'on est bien sur une page avec sidebar
-                const parentDoc = window.parent.document;
-                const sidebar = parentDoc.querySelector('section[data-testid="stSidebar"]');
-                if (!sidebar) return;
-
-                // Créer le bouton
-                const btn = parentDoc.createElement('button');
-                btn.id = 'tuniwatch-logout-btn';
-                btn.innerHTML = '🚪 &nbsp; Se déconnecter';
-                btn.onclick = function() {
-                    // Rediriger vers ?logout=1
-                    const url = new URL(window.parent.location.href);
-                    url.searchParams.set('logout', '1');
-                    window.parent.location.href = url.toString();
-                };
-
-                // Ajouter au body de la page parente
-                parentDoc.body.appendChild(btn);
-            }
-
-            // Injecter au chargement
-            injectLogoutButton();
-
-            // Réinjecter toutes les 1s (car Streamlit peut re-render)
-            setInterval(injectLogoutButton, 1000);
-        })();
-    </script>
-    """, height=0)
+    """Ne fait rien - tout est dans sidebar_user()."""
+    pass
 
 
 # ============================================================
@@ -359,16 +272,10 @@ def sidebar_logout():
 # ============================================================
 def kpi_card(icon, label, value, trend=None, trend_type="positive",
              tendance=None, couleur=None, **kwargs):
-    """Affiche une carte KPI professionnelle."""
     if trend is None and tendance is not None:
         trend = tendance
-
     border_style = f"border-left: 5px solid {couleur} !important;" if couleur else ""
-
-    trend_html = ""
-    if trend:
-        trend_html = f'<span class="kpi-trend {trend_type}">{trend}</span>'
-
+    trend_html = f'<span class="kpi-trend {trend_type}">{trend}</span>' if trend else ""
     st.markdown(f"""
     <div class="kpi-card" style="{border_style}">
         <span class="kpi-icon">{icon}</span>
@@ -380,26 +287,21 @@ def kpi_card(icon, label, value, trend=None, trend_type="positive",
 
 
 def article_card(titre, source="", date="", sentiment=None, url=None, **kwargs):
-    """Affiche une carte d'article professionnelle."""
     titre_propre = nettoyer_html(titre)
     source_propre = nettoyer_html(source)
     date_propre = str(date or "").strip()
-
     if not titre_propre:
         titre_propre = "(Titre non disponible)"
-
     badge_html = ""
     if sentiment:
-        sentiment_clean = str(sentiment).lower().strip()
-        if sentiment_clean in ("positif", "negatif", "neutre"):
-            badge_html = f'<span class="article-badge badge-{sentiment_clean}">{sentiment_clean}</span>'
-
+        sc = str(sentiment).lower().strip()
+        if sc in ("positif", "negatif", "neutre"):
+            badge_html = f'<span class="article-badge badge-{sc}">{sc}</span>'
     url_clean = str(url or "").strip()
     link_html = (
         f'<a href="{url_clean}" target="_blank" rel="noopener" '
         f'style="color:#E63946; text-decoration:none; font-weight:600;">🔗 Lire</a>'
     ) if url_clean else ''
-
     meta_parts = [f'<span>📰 {source_propre}</span>']
     if date_propre:
         meta_parts.append(f'<span>📅 {date_propre[:10]}</span>')
@@ -407,30 +309,23 @@ def article_card(titre, source="", date="", sentiment=None, url=None, **kwargs):
         meta_parts.append(badge_html)
     if link_html:
         meta_parts.append(link_html)
-
     meta_html = " ".join(meta_parts)
-
     st.markdown(f"""
     <div class="article-card">
         <div class="article-title">{titre_propre}</div>
-        <div class="article-meta">
-            {meta_html}
-        </div>
+        <div class="article-meta">{meta_html}</div>
     </div>
     """, unsafe_allow_html=True)
 
 
 # ============================================================
-# 🔗 ALIAS POUR COMPATIBILITÉ
+# 🔗 ALIAS
 # ============================================================
-
 def appliquer_style():
-    """Alias de apply_style() pour compatibilité."""
     return apply_style()
 
 
 def section_title(icone, titre, sous_titre=""):
-    """Affiche un titre de section avec icône."""
     st.markdown(f"## {icone} {titre}")
     if sous_titre:
         st.caption(sous_titre)
@@ -438,7 +333,6 @@ def section_title(icone, titre, sous_titre=""):
 
 
 def page_header(titre, icone="", description="", badge=None):
-    """Affiche un en-tête de page premium."""
     badge_html = ""
     if badge:
         badge_html = (
@@ -447,7 +341,6 @@ def page_header(titre, icone="", description="", badge=None):
             f'border-radius:20px; font-size:0.75rem; font-weight:700; '
             f'margin-left:0.5rem;">{badge}</span>'
         )
-
     st.markdown(f"""
     <div style="padding: 1rem 0 1.5rem 0;">
         <h1 style="margin:0; color:#1D3557; font-weight:800; font-size:2.4rem; letter-spacing:-1px;">
@@ -462,7 +355,6 @@ def page_header(titre, icone="", description="", badge=None):
 
 
 def footer():
-    """Affiche le pied de page."""
     st.markdown("---")
     st.markdown(
         "<div style='text-align:center; color:#6C757D; font-size:0.8rem; padding:1rem;'>"
