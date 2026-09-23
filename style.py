@@ -1,13 +1,16 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v5 - SAFE)
+# TuniWatch - Style Professionnel (v6 - FINAL)
 # Fichier : style.py
-# Description : CSS premium SANS altération des données
+# Description : CSS premium + alias pour compatibilité
 # ============================================================
 
 import streamlit as st
 import re
 
 
+# ============================================================
+# 🔧 NETTOYAGE HTML (sans toucher aux accents)
+# ============================================================
 def nettoyer_html(texte):
     """
     Nettoie UNIQUEMENT les balises HTML résiduelles.
@@ -180,7 +183,7 @@ def apply_style():
 # ============================================================
 # 🧩 COMPOSANTS RÉUTILISABLES
 # ============================================================
-def kpi_card(icon: str, label: str, value: str, trend: str = None, trend_type: str = "positive"):
+def kpi_card(icon: str, label: str, value: str, trend: str = None, trend_type: str = "positive", **kwargs):
     """Affiche une carte KPI professionnelle."""
     trend_html = ""
     if trend:
@@ -200,14 +203,12 @@ def article_card(titre: str, source: str = "", date: str = "", sentiment: str = 
     """
     Affiche une carte d'article professionnelle.
     ⚠️ AUCUNE transformation d'encodage : on affiche le titre TEL QUEL.
-    On retire uniquement les balises HTML résiduelles.
     """
-    # ⚠️ On retire UNIQUEMENT le HTML, PAS les accents ni apostrophes
+    # On retire UNIQUEMENT le HTML, PAS les accents ni apostrophes
     titre_propre = nettoyer_html(titre)
     source_propre = nettoyer_html(source)
     date_propre = str(date or "").strip()
 
-    # Si le titre est vraiment vide après nettoyage HTML
     if not titre_propre:
         titre_propre = "(Titre non disponible)"
 
@@ -244,9 +245,12 @@ def article_card(titre: str, source: str = "", date: str = "", sentiment: str = 
         </div>
     </div>
     """, unsafe_allow_html=True)
-    # ============================================================
-# ALIAS POUR COMPATIBILITÉ (les anciennes pages appellent
-# style.appliquer_style() et style.kpi_card() avec d'autres params)
+
+
+# ============================================================
+# 🔗 ALIAS POUR COMPATIBILITÉ
+# (les anciennes pages appellent style.appliquer_style(),
+#  style.section_title() et style.footer())
 # ============================================================
 
 def appliquer_style():
@@ -254,7 +258,6 @@ def appliquer_style():
     return apply_style()
 
 
-# Alias pour les fonctions supplémentaires utilisées par certaines pages
 def section_title(icone, titre, sous_titre=""):
     """Affiche un titre de section avec icône."""
     st.markdown(f"## {icone} {titre}")
