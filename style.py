@@ -1,7 +1,8 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v13 - FINAL)
+# TuniWatch - Style Professionnel (v14 - FUSION FINALE)
 # Fichier : style.py
-# Description : Bloc user en haut avec bouton déconnexion intégré
+# Description : Fusion du 1er style.py (bouton déconnexion qui
+#               marchait) + design premium + composants réutilisables
 # ============================================================
 
 import streamlit as st
@@ -27,6 +28,218 @@ def nettoyer_html(texte):
 
 
 # ============================================================
+# 🎨 APPLICATION DU STYLE
+# ============================================================
+def apply_style():
+    """Applique le style CSS personnalisé à l'application."""
+
+    st.markdown("""
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <style>
+        /* ============================================================
+           POLICE PRINCIPALE (sans toucher aux icônes)
+           ============================================================ */
+        html, body, .stApp, [class*="css"] {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* ⚠️ NE PAS toucher aux polices des icônes Streamlit */
+        [class*="material-symbols"],
+        [class*="Material Symbols"],
+        [data-testid="stIconMaterial"],
+        span[translate="no"] {
+            font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons', sans-serif !important;
+        }
+
+        /* ============================================================
+           CONTENEUR PRINCIPAL
+           ============================================================ */
+        .main .block-container {
+            padding-top: 2.5rem !important;
+            padding-bottom: 3rem !important;
+            padding-left: 3rem !important;
+            padding-right: 3rem !important;
+            max-width: 1500px !important;
+        }
+
+        /* ============================================================
+           TITRES
+           ============================================================ */
+        h1 { color: #1D3557 !important; font-weight: 800 !important; font-size: 2.2rem !important; letter-spacing: -0.8px !important; }
+        h2 { color: #1D3557 !important; font-weight: 700 !important; font-size: 1.5rem !important; letter-spacing: -0.4px !important; }
+        h3, h5 { color: #1D3557 !important; font-weight: 700 !important; }
+        .stCaption, [data-testid="stCaptionContainer"] { color: #6C757D !important; font-size: 0.9rem !important; }
+
+        /* ============================================================
+           SIDEBAR
+           ============================================================ */
+        section[data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #1D3557 0%, #0E1117 100%) !important;
+        }
+        section[data-testid="stSidebar"] * { color: #FAFAFA !important; }
+
+        /* On cache la navigation native de Streamlit
+           (on garde la navigation automatique gérée par Streamlit
+            via le dossier pages/) */
+        /* section[data-testid="stSidebarNav"] { display: none !important; } */
+
+        /* Réserver de l'espace en haut pour le bloc utilisateur fixé */
+        section[data-testid="stSidebar"] > div:first-child {
+            padding-top: 90px !important;
+        }
+
+        section[data-testid="stSidebar"] nav ul li a {
+            border-radius: 10px !important;
+            padding: 0.6rem 1rem !important;
+            transition: all 0.2s ease !important;
+        }
+        section[data-testid="stSidebar"] nav ul li a:hover {
+            background: rgba(230, 57, 70, 0.2) !important;
+            transform: translateX(4px) !important;
+        }
+        section[data-testid="stSidebar"] nav ul li a[aria-current="page"] {
+            background: rgba(230, 57, 70, 0.35) !important;
+            border-left: 4px solid #E63946 !important;
+            font-weight: 700 !important;
+        }
+        section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.1) !important; }
+
+        /* ============================================================
+           ✅ BOUTON DÉCONNEXION (styles du 1er style.py qui marchait)
+           ============================================================ */
+        section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+            background: linear-gradient(135deg, #e70013 0%, #b8000f 100%) !important;
+            color: white !important;
+            border: none !important;
+            font-weight: 700 !important;
+            box-shadow: 0 3px 10px rgba(231, 0, 19, 0.25) !important;
+            border-radius: 8px !important;
+            padding: 10px 14px !important;
+            transition: all 0.2s ease !important;
+        }
+        section[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #b8000f 0%, #900008 100%) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 5px 15px rgba(231, 0, 19, 0.4) !important;
+        }
+
+        /* ============================================================
+           CARTES KPI
+           ============================================================ */
+        .kpi-card {
+            background: #FFFFFF !important;
+            border-radius: 16px !important;
+            padding: 1.5rem !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04) !important;
+            border: 1px solid #E9ECEF !important;
+            border-left: 5px solid #E63946 !important;
+            transition: all 0.3s ease !important;
+            height: 100% !important;
+        }
+        .kpi-card:hover {
+            transform: translateY(-6px) !important;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.1) !important;
+        }
+        .kpi-icon { font-size: 1.6rem !important; margin-bottom: 0.75rem !important; display: block !important; }
+        .kpi-label {
+            font-size: 0.72rem !important; color: #6C757D !important;
+            text-transform: uppercase !important; letter-spacing: 1.5px !important;
+            font-weight: 700 !important; margin-bottom: 0.6rem !important;
+        }
+        .kpi-value {
+            font-size: 2.2rem !important; font-weight: 900 !important;
+            color: #1D3557 !important; line-height: 1 !important;
+            margin-bottom: 0.5rem !important; letter-spacing: -1px !important;
+        }
+        .kpi-trend {
+            font-size: 0.75rem !important; font-weight: 700 !important;
+            display: inline-flex !important; align-items: center !important;
+            gap: 0.3rem !important; padding: 0.25rem 0.65rem !important;
+            border-radius: 20px !important;
+        }
+        .kpi-trend.positive { color: #06D6A0 !important; background: rgba(6, 214, 160, 0.12) !important; }
+        .kpi-trend.negative { color: #EF476F !important; background: rgba(239, 71, 111, 0.12) !important; }
+        .kpi-trend.neutral { color: #B8860B !important; background: rgba(255, 209, 102, 0.15) !important; }
+
+        /* ============================================================
+           CARTES ARTICLES
+           ============================================================ */
+        .article-card {
+            background: #FFFFFF !important;
+            border-radius: 12px !important;
+            padding: 1rem 1.25rem !important;
+            margin-bottom: 0.75rem !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+            border: 1px solid #E9ECEF !important;
+            border-left: 4px solid transparent !important;
+            transition: all 0.2s ease !important;
+        }
+        .article-card:hover {
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+            border-left-color: #E63946 !important;
+            transform: translateX(4px) !important;
+        }
+        .article-title {
+            font-weight: 600 !important; color: #1D3557 !important;
+            font-size: 0.95rem !important; margin-bottom: 0.5rem !important;
+            line-height: 1.4 !important;
+        }
+        .article-meta {
+            font-size: 0.78rem !important; color: #6C757D !important;
+            display: flex !important; gap: 0.8rem !important;
+            flex-wrap: wrap !important; align-items: center !important;
+        }
+        .article-badge {
+            display: inline-block !important; padding: 0.15rem 0.6rem !important;
+            border-radius: 20px !important; font-size: 0.68rem !important;
+            font-weight: 700 !important; text-transform: uppercase !important;
+        }
+        .badge-positif { background: rgba(6, 214, 160, 0.15) !important; color: #06D6A0 !important; }
+        .badge-negatif { background: rgba(239, 71, 111, 0.15) !important; color: #EF476F !important; }
+        .badge-neutre  { background: rgba(255, 209, 102, 0.2) !important;  color: #B8860B !important; }
+
+        /* ============================================================
+           BOUTONS (contenu principal)
+           ============================================================ */
+        .main .stButton > button {
+            border-radius: 10px !important; font-weight: 600 !important;
+            padding: 0.55rem 1.4rem !important; transition: all 0.2s ease !important;
+            border: none !important; background: #E63946 !important;
+            color: white !important; box-shadow: 0 2px 8px rgba(230, 57, 70, 0.2) !important;
+        }
+        .main .stButton > button:hover {
+            background: #C1121F !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 16px rgba(230, 57, 70, 0.3) !important;
+        }
+
+        /* ============================================================
+           SEPARATEURS
+           ============================================================ */
+        hr { border: none !important; border-top: 1px solid #E9ECEF !important; margin: 2.5rem 0 !important; }
+
+        /* ============================================================
+           SCROLLBAR
+           ============================================================ */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #F8F9FA; }
+        ::-webkit-scrollbar-thumb { background: #CED4DA; border-radius: 4px; }
+
+        /* ============================================================
+           CACHER LES ÉLÉMENTS STREAMLIT PARASITES
+           ============================================================ */
+        .stDeployButton { display: none !important; }
+        #MainMenu { visibility: hidden; }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+# ============================================================
 # 👤 BLOC UTILISATEUR (FIXÉ EN HAUT DE LA SIDEBAR)
 # ============================================================
 def sidebar_user():
@@ -43,6 +256,7 @@ def sidebar_user():
         "admin": "🛡️",
         "editeur": "✏️",
         "lecteur": "👤",
+        "viewer": "👤",
         "user": "👤",
     }.get(role, "👤")
 
@@ -51,6 +265,7 @@ def sidebar_user():
         "admin": "Administrateur",
         "editeur": "Éditeur",
         "lecteur": "Lecteur",
+        "viewer": "Lecteur",
         "user": "Utilisateur",
     }.get(role, role)
 
@@ -106,232 +321,54 @@ def sidebar_user():
 
 
 # ============================================================
-# 🚪 BOUTON DÉCONNEXION (DANS LE BLOC UTILISATEUR)
+# 🚪 BOUTON DÉCONNEXION (MÉTHODE ÉPROUVÉE DU 1ER STYLE.PY)
 # ============================================================
 def sidebar_logout():
     """
-    Affiche le bouton déconnexion juste sous le bloc utilisateur,
-    en utilisant un positionnement fixe qui marche vraiment.
+    Affiche le bouton déconnexion en bas de la sidebar.
+    Utilise la méthode du 1er style.py qui fonctionnait :
+    st.button(type="primary") + auth.deconnecter() + st.rerun()
     """
+    import auth
+
     user = st.session_state.get("user")
     if not user:
         return
 
-    # Injection du bouton directement dans le HTML du bloc utilisateur
-    st.sidebar.markdown(f"""
-    <style>
-        /* Bouton déconnexion fixé juste sous le bloc utilisateur */
-        .logout-fixed-btn {{
-            position: fixed;
-            top: 84px;
-            left: 1rem;
-            width: 244px;
-            z-index: 1000;
-        }}
-        .logout-fixed-btn a {{
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            padding: 10px 14px;
-            background: rgba(230, 57, 70, 0.12);
-            border: 1px solid rgba(230, 57, 70, 0.45);
-            border-radius: 10px;
-            color: #FF6B6B !important;
-            font-weight: 600;
-            font-size: 0.85rem;
-            text-decoration: none !important;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            box-sizing: border-box;
-        }}
-        .logout-fixed-btn a:hover {{
-            background: #E63946;
-            color: #FFFFFF !important;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(230, 57, 70, 0.4);
-        }}
-    </style>
-    <div class="logout-fixed-btn">
-        <a href="?logout=1" target="_self">🚪  Se déconnecter</a>
-    </div>
-    """, unsafe_allow_html=True)
+    # Grand espace pour pousser le bouton vers le bas de la sidebar
+    st.sidebar.markdown(
+        "<div style='height: 30vh;'></div>",
+        unsafe_allow_html=True
+    )
 
-    # Détecter le clic sur le lien
-    query_params = st.query_params
-    if query_params.get("logout") == "1":
-        # Nettoyer la session
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        # Nettoyer les query params
-        st.query_params.clear()
-        st.rerun()
+    # Séparateur visuel
+    st.sidebar.markdown(
+        "<hr style='margin: 12px 0; border-color: rgba(255,255,255,0.15);'>",
+        unsafe_allow_html=True
+    )
 
+    # ✅ Bouton déconnexion - méthode du 1er style.py
+    with st.sidebar:
+        if st.button(
+            "🚪  Se déconnecter",
+            use_container_width=True,
+            type="primary",
+            key=f"logout_global_{user.get('login', 'user')}"
+        ):
+            auth.deconnecter()
+            st.rerun()
 
-# ============================================================
-# 🎨 APPLICATION DU STYLE
-# ============================================================
-def apply_style():
-    """Applique le style CSS personnalisé à l'application."""
-
-    st.markdown("""
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <style>
-        /* Police principale */
-        html, body, .stApp, [class*="css"] {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        /* ⚠️ NE PAS toucher aux polices des icônes Streamlit */
-        [class*="material-symbols"],
-        [class*="Material Symbols"],
-        [data-testid="stIconMaterial"],
-        span[translate="no"] {
-            font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons', sans-serif !important;
-        }
-
-        /* CONTENEUR */
-        .main .block-container {
-            padding-top: 2.5rem !important;
-            padding-bottom: 3rem !important;
-            padding-left: 3rem !important;
-            padding-right: 3rem !important;
-            max-width: 1500px !important;
-        }
-
-        /* TITRES */
-        h1 { color: #1D3557 !important; font-weight: 800 !important; font-size: 2.2rem !important; letter-spacing: -0.8px !important; }
-        h2 { color: #1D3557 !important; font-weight: 700 !important; font-size: 1.5rem !important; letter-spacing: -0.4px !important; }
-        h3, h5 { color: #1D3557 !important; font-weight: 700 !important; }
-        .stCaption, [data-testid="stCaptionContainer"] { color: #6C757D !important; font-size: 0.9rem !important; }
-
-        /* SIDEBAR */
-        section[data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #1D3557 0%, #0E1117 100%) !important;
-        }
-        section[data-testid="stSidebar"] * { color: #FAFAFA !important; }
-
-        /* Réserver de l'espace en haut de la sidebar
-           pour ne pas cacher la navigation par le bloc utilisateur + bouton */
-        section[data-testid="stSidebar"] > div:first-child {
-            padding-top: 150px !important;
-        }
-
-        section[data-testid="stSidebar"] nav ul li a {
-            border-radius: 10px !important;
-            padding: 0.6rem 1rem !important;
-            transition: all 0.2s ease !important;
-        }
-        section[data-testid="stSidebar"] nav ul li a:hover {
-            background: rgba(230, 57, 70, 0.2) !important;
-            transform: translateX(4px) !important;
-        }
-        section[data-testid="stSidebar"] nav ul li a[aria-current="page"] {
-            background: rgba(230, 57, 70, 0.35) !important;
-            border-left: 4px solid #E63946 !important;
-            font-weight: 700 !important;
-        }
-        section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.1) !important; }
-
-        /* CARTES KPI */
-        .kpi-card {
-            background: #FFFFFF !important;
-            border-radius: 16px !important;
-            padding: 1.5rem !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04) !important;
-            border: 1px solid #E9ECEF !important;
-            border-left: 5px solid #E63946 !important;
-            transition: all 0.3s ease !important;
-            height: 100% !important;
-        }
-        .kpi-card:hover {
-            transform: translateY(-6px) !important;
-            box-shadow: 0 12px 28px rgba(0,0,0,0.1) !important;
-        }
-        .kpi-icon { font-size: 1.6rem !important; margin-bottom: 0.75rem !important; display: block !important; }
-        .kpi-label {
-            font-size: 0.72rem !important; color: #6C757D !important;
-            text-transform: uppercase !important; letter-spacing: 1.5px !important;
-            font-weight: 700 !important; margin-bottom: 0.6rem !important;
-        }
-        .kpi-value {
-            font-size: 2.2rem !important; font-weight: 900 !important;
-            color: #1D3557 !important; line-height: 1 !important;
-            margin-bottom: 0.5rem !important; letter-spacing: -1px !important;
-        }
-        .kpi-trend {
-            font-size: 0.75rem !important; font-weight: 700 !important;
-            display: inline-flex !important; align-items: center !important;
-            gap: 0.3rem !important; padding: 0.25rem 0.65rem !important;
-            border-radius: 20px !important;
-        }
-        .kpi-trend.positive { color: #06D6A0 !important; background: rgba(6, 214, 160, 0.12) !important; }
-        .kpi-trend.negative { color: #EF476F !important; background: rgba(239, 71, 111, 0.12) !important; }
-        .kpi-trend.neutral { color: #B8860B !important; background: rgba(255, 209, 102, 0.15) !important; }
-
-        /* CARTES ARTICLES */
-        .article-card {
-            background: #FFFFFF !important;
-            border-radius: 12px !important;
-            padding: 1rem 1.25rem !important;
-            margin-bottom: 0.75rem !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
-            border: 1px solid #E9ECEF !important;
-            border-left: 4px solid transparent !important;
-            transition: all 0.2s ease !important;
-        }
-        .article-card:hover {
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
-            border-left-color: #E63946 !important;
-            transform: translateX(4px) !important;
-        }
-        .article-title {
-            font-weight: 600 !important; color: #1D3557 !important;
-            font-size: 0.95rem !important; margin-bottom: 0.5rem !important;
-            line-height: 1.4 !important;
-        }
-        .article-meta {
-            font-size: 0.78rem !important; color: #6C757D !important;
-            display: flex !important; gap: 0.8rem !important;
-            flex-wrap: wrap !important; align-items: center !important;
-        }
-        .article-badge {
-            display: inline-block !important; padding: 0.15rem 0.6rem !important;
-            border-radius: 20px !important; font-size: 0.68rem !important;
-            font-weight: 700 !important; text-transform: uppercase !important;
-        }
-        .badge-positif { background: rgba(6, 214, 160, 0.15) !important; color: #06D6A0 !important; }
-        .badge-negatif { background: rgba(239, 71, 111, 0.15) !important; color: #EF476F !important; }
-        .badge-neutre  { background: rgba(255, 209, 102, 0.2) !important;  color: #B8860B !important; }
-
-        /* BOUTONS (contenu principal) */
-        .main .stButton > button {
-            border-radius: 10px !important; font-weight: 600 !important;
-            padding: 0.55rem 1.4rem !important; transition: all 0.2s ease !important;
-            border: none !important; background: #E63946 !important;
-            color: white !important; box-shadow: 0 2px 8px rgba(230, 57, 70, 0.2) !important;
-        }
-        .main .stButton > button:hover {
-            background: #C1121F !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 6px 16px rgba(230, 57, 70, 0.3) !important;
-        }
-
-        /* SEPARATEURS */
-        hr { border: none !important; border-top: 1px solid #E9ECEF !important; margin: 2.5rem 0 !important; }
-
-        /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #F8F9FA; }
-        ::-webkit-scrollbar-thumb { background: #CED4DA; border-radius: 4px; }
-    </style>
-    """, unsafe_allow_html=True)
+    # Info version en bas
+    st.sidebar.markdown(
+        "<hr style='margin: 12px 0; border-color: rgba(255,255,255,0.1);'>",
+        unsafe_allow_html=True
+    )
+    st.sidebar.markdown(
+        "<div style='text-align: center; color: #aaa; font-size: 0.7rem; padding: 5px 0;'>"
+        "Version 1.0 — Cockpit<br>© 2026 Khadraoui Mongi"
+        "</div>",
+        unsafe_allow_html=True
+    )
 
 
 # ============================================================
