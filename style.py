@@ -1,10 +1,12 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v22 - CORRIGÉ)
+# TuniWatch - Style Professionnel (v23 - ULTIME)
 # Fichier : style.py
+# Description : Anti-vibration via conversion PNG (stats garanties)
 # ============================================================
 
 import streamlit as st
 import re
+import io
 
 
 def nettoyer_html(texte):
@@ -30,7 +32,6 @@ def apply_style():
 
     st.markdown("""
     <style>
-        /* ============ POLICE ============ */
         html, body, .stApp, [class*="css"] {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
@@ -40,8 +41,6 @@ def apply_style():
         span[translate="no"] {
             font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons', sans-serif !important;
         }
-
-        /* ============ CONTENEUR ============ */
         .main .block-container {
             padding-top: 3rem !important;
             padding-bottom: 3rem !important;
@@ -50,7 +49,7 @@ def apply_style():
             max-width: 1500px !important;
         }
 
-        /* ============ ⚡ ANTI-VIBRATION ============ */
+        /* ⚡ Anti-vibration ULTIME */
         .js-plotly-plot,
         .js-plotly-plot *,
         .plot-container,
@@ -64,23 +63,12 @@ def apply_style():
             -webkit-transition: none !important;
             -webkit-animation: none !important;
         }
-        .js-plotly-plot .trace,
-        .js-plotly-plot .scatterlayer,
-        .js-plotly-plot .barlayer,
-        .js-plotly-plot .pielayer {
-            opacity: 1 !important;
-        }
-        .kpi-card, .article-card, .main .stButton > button {
-            transition: all 0.2s ease !important;
-        }
 
-        /* ============ TITRES ============ */
         h1 { color: #1D3557 !important; font-weight: 800 !important; font-size: 2.2rem !important; letter-spacing: -0.8px !important; }
         h2 { color: #1D3557 !important; font-weight: 700 !important; font-size: 1.5rem !important; letter-spacing: -0.4px !important; }
         h3, h5 { color: #1D3557 !important; font-weight: 700 !important; }
         .stCaption, [data-testid="stCaptionContainer"] { color: #6C757D !important; font-size: 0.9rem !important; }
 
-        /* ============ SIDEBAR ============ */
         section[data-testid="stSidebar"] {
             background: linear-gradient(180deg, #1D3557 0%, #0E1117 100%) !important;
         }
@@ -122,20 +110,12 @@ def apply_style():
             margin-top: 8px !important;
         }
 
-        /* ============ GRAPHIQUES PLOTLY ============ */
-        div[data-testid="stPlotlyChart"] {
-            padding: 8px !important;
+        div[data-testid="stImage"] img {
             border-radius: 16px !important;
-            background: #FFFFFF !important;
             box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06) !important;
-            overflow: visible !important;
-            margin-bottom: 16px !important;
-        }
-        div[data-testid="stPlotlyChart"] > div {
-            overflow: visible !important;
+            background: #FFFFFF !important;
         }
 
-        /* ============ CARTES KPI ============ */
         .kpi-card {
             background: #FFFFFF !important;
             border-radius: 16px !important;
@@ -170,7 +150,6 @@ def apply_style():
         .kpi-trend.negative { color: #EF476F !important; background: rgba(239, 71, 111, 0.12) !important; }
         .kpi-trend.neutral { color: #B8860B !important; background: rgba(255, 209, 102, 0.15) !important; }
 
-        /* ============ CARTES ARTICLES ============ */
         .article-card {
             background: #FFFFFF !important;
             border-radius: 12px !important;
@@ -204,7 +183,6 @@ def apply_style():
         .badge-negatif { background: rgba(239, 71, 111, 0.15) !important; color: #EF476F !important; }
         .badge-neutre  { background: rgba(255, 209, 102, 0.2) !important;  color: #B8860B !important; }
 
-        /* ============ BOUTONS ============ */
         .main .stButton > button {
             border-radius: 10px !important; font-weight: 600 !important;
             padding: 0.55rem 1.4rem !important;
@@ -269,45 +247,33 @@ def sidebar_logout():
 
 
 # ============================================================
-# 📊 GRAPHIQUES SANS ANIMATION (v3 - CORRIGÉ)
+# 📊 AFFICHAGE GRAPHIQUE ULTIME - CONVERSION EN PNG
 # ============================================================
-def configurer_graphique(fig, hauteur=350):
+def afficher_graphique(fig, hauteur=350):
     """
-    Configure un graphique Plotly SANS AUCUNE animation.
-    Fonctionne avec go.Figure ET px (Plotly Express).
-    ⚠️ NE PAS appeler fig.update_traces() ici (erreur sur Python 3.14).
+    Affiche un graphique Plotly en le CONVERTISSANT EN IMAGE PNG.
+    ⚡ ZÉRO animation, ZÉRO tremblement, rendu 100% statique.
     """
     fig.update_layout(
         height=hauteur,
         margin=dict(l=40, r=40, t=30, b=50),
         plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="white",
         font=dict(family="Inter, sans-serif", size=12, color="#1D3557"),
-        transition=dict(duration=0, easing="linear"),
-        uirevision="static",
     )
-    return fig
 
-
-def afficher_graphique(fig, hauteur=350):
-    """
-    Affiche un graphique Plotly SANS AUCUNE animation.
-    À utiliser à la place de st.plotly_chart().
-    """
-    configurer_graphique(fig, hauteur)
-
-    plotly_config = {
-        "displayModeBar": False,
-        "staticPlot": False,
-        "responsive": True,
-        "scrollZoom": False,
-        "doubleClick": False,
-        "showTips": False,
-        "displaylogo": False,
-        "transitionDuration": 0,
-    }
-
-    st.plotly_chart(fig, use_container_width=True, config=plotly_config)
+    try:
+        # Convertir la figure en PNG (nécessite kaleido)
+        img_bytes = fig.to_image(format="png", width=1200, height=hauteur, scale=2)
+        st.image(img_bytes, use_container_width=True)
+    except Exception as e:
+        # Si kaleido n'est pas installé, fallback sur plotly_chart
+        st.warning(f"⚠️ Rendu image impossible (kaleido manquant ?). Affichage interactif.")
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={"displayModeBar": False, "staticPlot": True, "responsive": True}
+        )
 
 
 # ============================================================
