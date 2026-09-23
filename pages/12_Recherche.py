@@ -1,51 +1,38 @@
 """
-Page Recherche - Recherche avancee dans les articles
-Etape J - Polish final
+Page Recherche - Recherche avancée dans les articles
+Version 2.0 - Connectée à PostgreSQL
 """
 
 import streamlit as st
 import pandas as pd
 import sys
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import auth
 import style
-import favicon_config
-import mysql.connector
-from mysql.connector import Error
+from db_universal import get_connexion
 
-# Configuration
-favicon_config.setup_page("Recherche", "🔍", "wide")
+st.set_page_config(
+    page_title="Recherche - TuniWatch",
+    page_icon="🔍",
+    layout="wide"
+)
 
-# Style
 style.appliquer_style()
-
-# Protection
 auth.require_login()
 
 
 # ============================================================
-# FONCTION RECHERCHE
+# FONCTIONS DE RECHERCHE
 # ============================================================
-def rechercher_articles(
-    texte=None,
-    source=None,
-    theme=None,
-    sentiment=None,
-    langue=None,
-    jours=None,
-    limite=100
-):
-    """Recherche avancee dans les articles."""
-    try:
-        conn = mysql.connector.connect(**{
-            "host": "localhost", "port": 3306,
-            "user": "python_user", "password": "PythonUser2026!",
-            "database": "monitoring", "charset": "utf8mb4"
-        })
-    except Error:
+@st.cache_data(ttl=60)
+def rechercher_articles(texte=None, source=None, theme=None, sentiment=None,
+                         langue=None, jours=None, limite=100):
+    """Recherche avancée dans les articles (PostgreSQL)."""
+    conn = get_connexion()
+    if conn is None:
         return []
 
     curseur = conn.cursor(dictionary=True)
@@ -53,6 +40,7 @@ def rechercher_articles(
         requete = """
             SELECT DISTINCT
                 a.id, a.titre, a.source, a.url, a.date_publication, a.date_ajout,
+                a.description, a.image,
                 at.theme, at.score AS score_theme,
                 s.sentiment, s.score AS score_sentiment, s.langue_detectee
             FROM articles a
@@ -63,7 +51,7 @@ def rechercher_articles(
         params = []
 
         if texte:
-            requete += " AND (a.titre LIKE %s OR a.description LIKE %s)"
+            requete += " AND (a.titre ILIKE %s OR a.description ILIKE %s)"
             params.extend([f"%{texte}%", f"%{texte}%"])
 
         if source and source != "Toutes":
@@ -83,7 +71,7 @@ def rechercher_articles(
             params.append(langue)
 
         if jours:
-            requete += " AND a.date_ajout >= DATE_SUB(NOW(), INTERVAL %s DAY)"
+            requete += " AND a.date_ajout >= NOW() - INTERVAL '%s days'"
             params.append(jours)
 
         requete += " ORDER BY a.date_ajout DESC LIMIT %s"
@@ -91,7 +79,7 @@ def rechercher_articles(
 
         curseur.execute(requete, params)
         return curseur.fetchall()
-    except Error as e:
+    except Exception as e:
         st.error(f"Erreur recherche : {e}")
         return []
     finally:
@@ -99,34 +87,51 @@ def rechercher_articles(
         conn.close()
 
 
+@st.cache_data(ttl=300)
 def lister_sources():
+    """Liste les sources uniques."""
+    conn = get_connexion()
+    if conn is None:
+        return []
+    curseur = conn.cursor()
     try:
-        conn = mysql.connector.connect(**{
-            "host": "localhost", "port": 3306,
-            "user": "python_user", "password": "PythonUser2026!",
-            "database": "monitoring", "charset": "utf8mb4"
-        })
-        curseur = conn.cursor()
         curseur.execute("""
             SELECT DISTINCT source FROM articles
             WHERE source IS NOT NULL AND source != ''
             ORDER BY source
         """)
-        result = [r[0] for r in curseur.fetchall()]
+        return [r[0] for r in curseur.fetchall()]
+    finally:
         curseur.close()
         conn.close()
-        return result
-    except Error:
+
+
+@st.cache_data(ttl=300)
+def lister_themes():
+    """Liste les thèmes uniques."""
+    conn = get_connexion()
+    if conn is None:
         return []
+    curseur = conn.cursor()
+    try:
+        curseur.execute("""
+            SELECT DISTINCT theme FROM articles
+            WHERE theme IS NOT NULL AND theme != '' AND theme != 'nan'
+            ORDER BY theme
+        """)
+        return [r[0] for r in curseur.fetchall()]
+    finally:
+        curseur.close()
+        conn.close()
 
 
 # ============================================================
-# EN-TETE
+# EN-TÊTE
 # ============================================================
 style.page_header(
     "Recherche avancée",
     "🔍",
-    "Explorez les 400+ articles collectés avec des filtres puissants"
+    "Explorez les articles collectés avec des filtres puissants"
 )
 
 # ============================================================
@@ -150,7 +155,7 @@ with col2:
     )
 
 # ============================================================
-# FILTRES AVANCES
+# FILTRES AVANCÉS
 # ============================================================
 with st.expander("🎛️ Filtres avancés", expanded=True):
     col1, col2, col3 = st.columns(3)
@@ -159,13 +164,8 @@ with st.expander("🎛️ Filtres avancés", expanded=True):
         sources_dispo = ["Toutes"] + lister_sources()
         source_filtre = st.selectbox("📡 Source", sources_dispo, key="search_source")
 
-        theme_filtre = st.selectbox(
-            "🎯 Thème",
-            ["Tous", "violence_femmes", "discours_haine", "presence_femmes",
-             "presence_handicapes", "presence_jeunes", "equilibre_politique",
-             "equilibre_regional"],
-            key="search_theme"
-        )
+        themes_dispo = ["Tous"] + lister_themes()
+        theme_filtre = st.selectbox("🎯 Thème", themes_dispo, key="search_theme")
 
     with col2:
         sentiment_filtre = st.selectbox(
@@ -210,7 +210,7 @@ with st.spinner("Recherche en cours..."):
     )
 
 # ============================================================
-# AFFICHAGE DES RESULTATS
+# AFFICHAGE DES RÉSULTATS
 # ============================================================
 st.markdown("---")
 
@@ -237,7 +237,6 @@ else:
 
     st.markdown("---")
 
-    # Liste des résultats
     st.subheader(f"📋 {len(resultats)} article(s) trouvé(s)")
 
     for i, art in enumerate(resultats, 1):
@@ -245,7 +244,6 @@ else:
             col1, col2 = st.columns([5, 1])
 
             with col1:
-                # Titre cliquable
                 titre = art.get("titre", "Sans titre")
                 url = art.get("url", "")
                 if url:
@@ -253,7 +251,6 @@ else:
                 else:
                     st.markdown(f"**{i}. {titre[:150]}**")
 
-                # Meta
                 meta = []
                 if art.get("source"):
                     meta.append(f"📰 {art['source']}")
@@ -269,22 +266,23 @@ else:
                         "presence_jeunes": "🧑", "equilibre_politique": "🏛️",
                         "equilibre_regional": "🗺️"
                     }.get(art["theme"], "🌐")
-                    meta.append(f"{emoji} {art['theme']} ({art['score_theme']:.1f})")
+                    score_t = art.get("score_theme") or 0
+                    meta.append(f"{emoji} {art['theme']} ({score_t:.1f})")
 
                 st.caption(" • ".join(meta))
 
             with col2:
-                # Badge sentiment
                 sentiment = art.get("sentiment")
                 if sentiment:
                     emoji_s = {"positif": "🟢", "neutre": "🟡", "negatif": "🔴"}.get(sentiment, "⚪")
-                    st.markdown(f"""
-                    <div style="text-align: center; padding: 8px;
-                                background: #f8f9fa; border-radius: 8px;">
-                        <div style="font-size: 1.5rem;">{emoji_s}</div>
-                        <div style="font-size: 0.7rem; color: #666;">{sentiment}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div style="text-align: center; padding: 8px; '
+                        f'background: #f8f9fa; border-radius: 8px;">'
+                        f'<div style="font-size: 1.5rem;">{emoji_s}</div>'
+                        f'<div style="font-size: 0.7rem; color: #666;">{sentiment}</div>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
 
             st.markdown("")
 

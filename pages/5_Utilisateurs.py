@@ -1,35 +1,33 @@
 """
-Page Utilisateurs - Gestion des comptes (admin uniquement)
-Etape D - Session 7
+Page Utilisateurs - Gestion des comptes (super admin uniquement)
+Version 2.0 - Connectée à PostgreSQL
 """
 
 import streamlit as st
 import sys
 import os
 import bcrypt
-import mysql.connector
-from mysql.connector import Error
 
-# Ajout du dossier parent
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import auth
 import style
+from db_universal import get_connexion
+
 style.appliquer_style()
-# Configuration
+
 st.set_page_config(
-    page_title="Utilisateurs - Monitoring",
+    page_title="Utilisateurs - TuniWatch",
     page_icon="👥",
     layout="wide"
 )
 
-# Protection ADMIN uniquement
 auth.require_super_admin()
+
 # ============================================================
 # TITRE
 # ============================================================
 st.title("👥 Gestion des utilisateurs")
-st.caption("Page réservée aux administrateurs")
-
+st.caption("Page réservée au super administrateur")
 st.markdown("---")
 
 
@@ -38,7 +36,7 @@ st.markdown("---")
 # ============================================================
 def lister_utilisateurs():
     """Retourne la liste des utilisateurs."""
-    conn = auth.get_connexion()
+    conn = get_connexion()
     if conn is None:
         return []
     curseur = conn.cursor(dictionary=True)
@@ -55,14 +53,13 @@ def lister_utilisateurs():
 
 
 def creer_utilisateur(login, mot_de_passe, role):
-    """Cree un nouvel utilisateur. Retourne (succes, message)."""
-    conn = auth.get_connexion()
+    """Cree un nouvel utilisateur."""
+    conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Connexion impossible"
 
     curseur = conn.cursor()
     try:
-        # Verifier si existe deja
         curseur.execute(
             "SELECT id FROM utilisateurs WHERE login = %s",
             (login,)
@@ -70,7 +67,6 @@ def creer_utilisateur(login, mot_de_passe, role):
         if curseur.fetchone():
             return False, f"Le login '{login}' existe déjà."
 
-        # Creer
         hash_ = bcrypt.hashpw(
             mot_de_passe.encode("utf-8"),
             bcrypt.gensalt(rounds=12)
@@ -83,7 +79,7 @@ def creer_utilisateur(login, mot_de_passe, role):
         conn.commit()
         return True, f"Utilisateur '{login}' créé avec succès."
 
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -91,17 +87,17 @@ def creer_utilisateur(login, mot_de_passe, role):
 
 
 def supprimer_utilisateur(user_id, user_login):
-    """Supprime un utilisateur (sauf admin connecte)."""
-    conn = auth.get_connexion()
+    """Supprime un utilisateur."""
+    conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Connexion impossible"
 
     curseur = conn.cursor()
     try:
         curseur.execute("DELETE FROM utilisateurs WHERE id = %s", (user_id,))
         conn.commit()
         return True, f"Utilisateur '{user_login}' supprimé."
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -110,9 +106,9 @@ def supprimer_utilisateur(user_id, user_login):
 
 def changer_role(user_id, nouveau_role):
     """Change le role d'un utilisateur."""
-    conn = auth.get_connexion()
+    conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Connexion impossible"
 
     curseur = conn.cursor()
     try:
@@ -122,7 +118,7 @@ def changer_role(user_id, nouveau_role):
         )
         conn.commit()
         return True, f"Rôle changé en '{nouveau_role}'."
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -131,9 +127,9 @@ def changer_role(user_id, nouveau_role):
 
 def reinitialiser_mdp(user_id, nouveau_mdp):
     """Reinitialise le mot de passe d'un utilisateur."""
-    conn = auth.get_connexion()
+    conn = get_connexion()
     if conn is None:
-        return False, "MySQL non accessible"
+        return False, "Connexion impossible"
 
     curseur = conn.cursor()
     try:
@@ -148,7 +144,7 @@ def reinitialiser_mdp(user_id, nouveau_mdp):
         )
         conn.commit()
         return True, "Mot de passe réinitialisé."
-    except Error as e:
+    except Exception as e:
         return False, f"Erreur : {e}"
     finally:
         curseur.close()
@@ -156,7 +152,7 @@ def reinitialiser_mdp(user_id, nouveau_mdp):
 
 
 # ============================================================
-# RECUPERER L'UTILISATEUR CONNECTE
+# UTILISATEUR CONNECTÉ
 # ============================================================
 current_user = auth.get_user()
 
@@ -176,7 +172,7 @@ else:
         col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 3, 2])
 
         with col1:
-            badge = "👑" if u["role"] == "admin" else "👤"
+            badge = "👑" if u["role"] in ("super_admin", "admin") else "👤"
             st.write(f"{badge} **{u['login']}**")
 
         with col2:
@@ -189,7 +185,6 @@ else:
             st.caption(f"Créé le {u['date_creation']}")
 
         with col5:
-            # Ne pas permettre de supprimer son propre compte
             if u["id"] == current_user["id"]:
                 st.caption("(vous)")
             else:
@@ -204,7 +199,7 @@ else:
         st.markdown("---")
 
 # ============================================================
-# SECTION 2 : CREER UN UTILISATEUR
+# SECTION 2 : CRÉER UN UTILISATEUR
 # ============================================================
 st.subheader("➕ Créer un nouvel utilisateur")
 
@@ -220,7 +215,7 @@ with st.form("form_create_user"):
 
         nouveau_role = st.selectbox(
             "👑 Rôle",
-            ["viewer", "admin"],
+            ["lecteur", "editeur", "admin"],
             key="new_user_role"
         )
 
@@ -264,59 +259,64 @@ with st.form("form_create_user"):
 st.markdown("---")
 
 # ============================================================
-# SECTION 3 : ACTIONS AVANCEES
+# SECTION 3 : ACTIONS AVANCÉES
 # ============================================================
 st.subheader("🔧 Actions avancées")
 
 with st.expander("🔄 Changer le rôle d'un utilisateur"):
-    user_a_modifier = st.selectbox(
-        "Utilisateur",
-        [u["login"] for u in users if u["id"] != current_user["id"]],
-        key="role_user_select"
-    )
+    users_sauf_moi = [u for u in users if u["id"] != current_user["id"]]
 
-    nouveau_role = st.selectbox(
-        "Nouveau rôle",
-        ["viewer", "admin"],
-        key="role_nouveau"
-    )
+    if users_sauf_moi:
+        user_a_modifier = st.selectbox(
+            "Utilisateur",
+            [u["login"] for u in users_sauf_moi],
+            key="role_user_select"
+        )
 
-    if st.button("Appliquer le changement de rôle", key="btn_role_change"):
-        # Trouver l'id
-        user_target = next((u for u in users if u["login"] == user_a_modifier), None)
-        if user_target:
-            ok, msg = changer_role(user_target["id"], nouveau_role)
-            if ok:
-                st.success(msg)
-                st.rerun()
-            else:
-                st.error(msg)
+        nouveau_role_admin = st.selectbox(
+            "Nouveau rôle",
+            ["lecteur", "editeur", "admin"],
+            key="role_nouveau"
+        )
 
-with st.expander("🔑 Réinitialiser un mot de passe"):
-    user_mdp = st.selectbox(
-        "Utilisateur",
-        [u["login"] for u in users],
-        key="mdp_user_select"
-    )
-
-    nouveau_mdp_admin = st.text_input(
-        "Nouveau mot de passe",
-        type="password",
-        key="mdp_admin_new"
-    )
-
-    if st.button("Réinitialiser le mot de passe", key="btn_mdp_reset"):
-        if len(nouveau_mdp_admin) < 8:
-            st.error("⚠️ Le mot de passe doit contenir au moins 8 caractères.")
-        else:
-            user_target = next((u for u in users if u["login"] == user_mdp), None)
+        if st.button("Appliquer le changement", key="btn_role_change"):
+            user_target = next((u for u in users if u["login"] == user_a_modifier), None)
             if user_target:
-                ok, msg = reinitialiser_mdp(user_target["id"], nouveau_mdp_admin)
+                ok, msg = changer_role(user_target["id"], nouveau_role_admin)
                 if ok:
-                    st.success(f"✅ {msg} (utilisateur : {user_mdp})")
+                    st.success(msg)
+                    st.rerun()
                 else:
                     st.error(msg)
+    else:
+        st.info("Aucun autre utilisateur à modifier.")
+
+with st.expander("🔑 Réinitialiser un mot de passe"):
+    if users:
+        user_mdp = st.selectbox(
+            "Utilisateur",
+            [u["login"] for u in users],
+            key="mdp_user_select"
+        )
+
+        nouveau_mdp_admin = st.text_input(
+            "Nouveau mot de passe",
+            type="password",
+            key="mdp_admin_new"
+        )
+
+        if st.button("Réinitialiser", key="btn_mdp_reset"):
+            if len(nouveau_mdp_admin) < 8:
+                st.error("⚠️ Le mot de passe doit contenir au moins 8 caractères.")
+            else:
+                user_target = next((u for u in users if u["login"] == user_mdp), None)
+                if user_target:
+                    ok, msg = reinitialiser_mdp(user_target["id"], nouveau_mdp_admin)
+                    if ok:
+                        st.success(f"✅ {msg} (utilisateur : {user_mdp})")
+                    else:
+                        st.error(msg)
 
 st.markdown("---")
-st.caption(f"Page Utilisateurs — Version 0.1 | Connecté en tant que {current_user['login']}")
+st.caption(f"Page Utilisateurs — Version 2.0 | Connecté en tant que {current_user['login']}")
 style.footer()

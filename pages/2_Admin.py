@@ -1,114 +1,270 @@
 """
-Page Admin - Gestion des sources et parametres
+Page Admin - Gestion des sources et paramètres
+Version 2.0 - Connectée à PostgreSQL
 """
 
 import streamlit as st
-
 import sys
 import os
+from datetime import datetime
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import auth
 import style
+from db_universal import get_connexion
+
 style.appliquer_style()
-# Protection admin (bloque si pas admin)
-auth.require_super_admin()
-# Configuration
+
 st.set_page_config(
-    page_title="Admin - Monitoring",
+    page_title="Admin - TuniWatch",
     page_icon="⚙️",
     layout="wide"
 )
 
-# Titre
+auth.require_super_admin()
+
+# ============================================================
+# TITRE
+# ============================================================
 st.title("⚙️ Espace Administrateur")
-st.write("Gestion des sources, des alertes et des paramètres.")
+st.caption("Gestion des sources, statistiques système et paramètres")
+st.markdown("---")
+
+
+# ============================================================
+# FONCTIONS
+# ============================================================
+@st.cache_data(ttl=60)
+def stats_systeme():
+    """Récupère les statistiques système."""
+    conn = get_connexion()
+    if conn is None:
+        return {}
+    curseur = conn.cursor(dictionary=True)
+    try:
+        curseur.execute("""
+            SELECT 
+                (SELECT COUNT(*) FROM articles) AS total_articles,
+                (SELECT COUNT(*) FROM sources) AS total_sources,
+                (SELECT COUNT(*) FROM mots_cles WHERE actif = 1) AS total_mots_cles,
+                (SELECT COUNT(*) FROM utilisateurs) AS total_utilisateurs,
+                (SELECT COUNT(*) FROM alertes) AS total_alertes,
+                (SELECT COUNT(*) FROM alertes WHERE lue = 0) AS alertes_non_lues,
+                (SELECT MAX(date_ajout) FROM articles) AS derniere_collecte,
+                (SELECT AVG(score) FROM articles_sentiment) AS score_moyen
+        """)
+        result = curseur.fetchone()
+        return {
+            "total_articles": int(result.get("total_articles") or 0),
+            "total_sources": int(result.get("total_sources") or 0),
+            "total_mots_cles": int(result.get("total_mots_cles") or 0),
+            "total_utilisateurs": int(result.get("total_utilisateurs") or 0),
+            "total_alertes": int(result.get("total_alertes") or 0),
+            "alertes_non_lues": int(result.get("alertes_non_lues") or 0),
+            "derniere_collecte": str(result.get("derniere_collecte"))[:16] if result.get("derniere_collecte") else "—",
+            "score_moyen": round(float(result.get("score_moyen") or 0), 2)
+        } if result else {}
+    finally:
+        curseur.close()
+        conn.close()
+
+
+@st.cache_data(ttl=60)
+def liste_sources_db():
+    """Liste les sources depuis la table sources."""
+    conn = get_connexion()
+    if conn is None:
+        return []
+    curseur = conn.cursor(dictionary=True)
+    try:
+        curseur.execute("""
+            SELECT id, nom, url_rss, actif
+            FROM sources
+            ORDER BY nom
+        """)
+        return curseur.fetchall()
+    finally:
+        curseur.close()
+        conn.close()
+
+
+@st.cache_data(ttl=60)
+def sources_articles():
+    """Liste les sources distinctes des articles avec leur nombre."""
+    conn = get_connexion()
+    if conn is None:
+        return []
+    curseur = conn.cursor(dictionary=True)
+    try:
+        curseur.execute("""
+            SELECT source AS nom, COUNT(*) AS nb_articles
+            FROM articles
+            WHERE source IS NOT NULL AND source != ''
+            GROUP BY source
+            ORDER BY nb_articles DESC
+        """)
+        return curseur.fetchall()
+    finally:
+        curseur.close()
+        conn.close()
+
+
+@st.cache_data(ttl=60)
+def repartition_themes():
+    """Répartition des articles par thème."""
+    conn = get_connexion()
+    if conn is None:
+        return []
+    curseur = conn.cursor(dictionary=True)
+    try:
+        curseur.execute("""
+            SELECT theme, COUNT(DISTINCT article_id) AS nb
+            FROM articles_themes
+            GROUP BY theme
+            ORDER BY nb DESC
+        """)
+        return curseur.fetchall()
+    finally:
+        curseur.close()
+        conn.close()
+
+
+# ============================================================
+# SECTION 1 : STATISTIQUES SYSTÈME
+# ============================================================
+st.subheader("📊 Statistiques système")
+
+with st.spinner("Chargement..."):
+    stats = stats_systeme()
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric("📰 Articles", f"{stats.get('total_articles', 0):,}".replace(",", " "))
+
+with col2:
+    st.metric("📡 Sources", stats.get('total_sources', 0))
+
+with col3:
+    st.metric("🔑 Mots-clés actifs", stats.get('total_mots_cles', 0))
+
+with col4:
+    st.metric("👥 Utilisateurs", stats.get('total_utilisateurs', 0))
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric("🚨 Alertes totales", stats.get('total_alertes', 0))
+
+with col2:
+    st.metric("🔔 Alertes non lues", stats.get('alertes_non_lues', 0))
+
+with col3:
+    st.metric("⭐ Score moyen", stats.get('score_moyen', 0))
+
+with col4:
+    st.metric("🕐 Dernière collecte", stats.get('derniere_collecte', '—'))
 
 st.markdown("---")
 
-# --- Section 1 : Sources suivies ---
-st.subheader("🌐 Sources suivies")
+# ============================================================
+# SECTION 2 : SOURCES SUIVIES (depuis la base)
+# ============================================================
+st.subheader("🌐 Sources suivies (avec articles collectés)")
 
-sources = [
-    {"nom": "Twitter / X", "statut": "🟢 Actif", "mentions_jour": 342},
-    {"nom": "LinkedIn", "statut": "🟢 Actif", "mentions_jour": 187},
-    {"nom": "Instagram", "statut": "🟢 Actif", "mentions_jour": 96},
-    {"nom": "Facebook", "statut": "🟡 En pause", "mentions_jour": 0},
-    {"nom": "TikTok", "statut": "🔴 Erreur", "mentions_jour": 0}
-]
+with st.spinner("Chargement des sources..."):
+    sources_data = sources_articles()
 
-for source in sources:
-    col1, col2, col3 = st.columns([2, 1, 1])
-    with col1:
-        st.write(f"**{source['nom']}**")
-    with col2:
-        st.write(source["statut"])
-    with col3:
-        st.write(f"{source['mentions_jour']} mentions/jour")
+if not sources_data:
+    st.warning("Aucune source avec articles pour le moment.")
+else:
+    st.caption(f"**{len(sources_data)}** sources actives dans la base")
 
-st.markdown("---")
+    for src in sources_data[:20]:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.write(f"📡 **{src['nom']}**")
+        with col2:
+            st.write(f"{src['nb_articles']} articles")
+        st.markdown("")
 
-# --- Section 2 : Ajouter une source (interface) ---
-st.subheader("➕ Ajouter une nouvelle source")
-
-with st.form("form_ajout_source"):
-    nom_source = st.text_input("Nom de la source", placeholder="Ex: Reddit")
-    api_key = st.text_input("Clé API", type="password")
-    actif = st.checkbox("Activer immédiatement", value=True)
-    
-    submitted = st.form_submit_button("Ajouter la source")
-    
-    if submitted:
-        if nom_source:
-            st.success(f"✅ Source **{nom_source}** ajoutée ! (simulation)")
-        else:
-            st.error("❌ Veuillez saisir un nom de source.")
+    if len(sources_data) > 20:
+        st.info(f"… et {len(sources_data) - 20} autres sources")
 
 st.markdown("---")
 
-# --- Section 3 : Parametres d'alerte ---
-st.subheader("🚨 Paramètres des alertes")
+# ============================================================
+# SECTION 3 : RÉPARTITION PAR THÈME
+# ============================================================
+st.subheader("🎯 Répartition par thème")
+
+with st.spinner("Chargement des thèmes..."):
+    themes_data = repartition_themes()
+
+if not themes_data:
+    st.warning("Aucun thème détecté.")
+else:
+    for th in themes_data:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.write(f"🎯 **{th['theme']}**")
+        with col2:
+            st.write(f"{th['nb']} articles")
+        st.markdown("")
+
+st.markdown("---")
+
+# ============================================================
+# SECTION 4 : PARAMÈTRES DES ALERTES
+# ============================================================
+st.subheader("🚨 Paramètres des alertes (informatif)")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    seuil_negatif = st.slider(
-        "Seuil de sentiment négatif",
-        min_value=-1.0,
-        max_value=0.0,
-        value=-0.3,
-        step=0.05
-    )
-    st.caption(f"Une alerte est déclenchée si le sentiment est < {seuil_negatif}")
+    st.markdown("""
+    **📌 Seuils de détection (dans `alert_detector.py`)**
+
+    - **Sentiment négatif** : score < -0.5 sur ≥ 2 articles
+    - **Pic de mentions** : x2 sur 3 jours (min 5 articles)
+    - **Baisse d'activité** : -50% (min 5 articles)
+    - **Pic global** : x3 en 1 jour (min 20 articles)
+    """)
 
 with col2:
-    seuil_mentions = st.number_input(
-        "Nombre de mentions pour alerte",
-        min_value=100,
-        max_value=10000,
-        value=1000,
-        step=100
-    )
-    st.caption(f"Alerte si plus de {seuil_mentions} mentions en 1h")
+    st.markdown("""
+    **⚙️ Automatisation**
+
+    - **Cron** : Analyse toutes les 2h (`crontab -e`)
+    - **Fichier** : `/root/tuniwatch/analysis.log`
+    - **Commande** : `python3 /root/tuniwatch/run_analysis.py`
+    """)
 
 st.markdown("---")
 
-# --- Section 4 : Actions systeme ---
+# ============================================================
+# SECTION 5 : ACTIONS
+# ============================================================
 st.subheader("🛠️ Actions système")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("🔄 Rafraîchir les données"):
-        st.success("Données rafraîchies ! (simulation)")
+    if st.button("🔄 Rafraîchir les données", use_container_width=True, key="admin_refresh"):
+        st.cache_data.clear()
+        st.success("Cache vidé et données rafraîchies !")
+        st.rerun()
 
 with col2:
-    if st.button("📥 Exporter en CSV"):
-        st.info("Export CSV en préparation... (simulation)")
+    if st.button("📊 Voir les logs", use_container_width=True, key="admin_logs"):
+        st.info("Logs disponibles sur le VPS : `/root/tuniwatch/analysis.log`")
 
 with col3:
-    if st.button("🗑️ Vider le cache"):
-        st.warning("Cache vidé ! (simulation)")
+    if st.button("🗑️ Vider le cache", use_container_width=True, key="admin_clear_cache"):
+        st.cache_data.clear()
+        st.success("Cache vidé !")
+        st.rerun()
 
 st.markdown("---")
-st.caption("Page Admin — Version 0.1")
+st.caption("Page Admin — Version 2.0")
 style.footer()
