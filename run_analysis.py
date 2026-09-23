@@ -1,13 +1,11 @@
 """
 Script de lancement de l'analyse complète.
-À exécuter sur le VPS ou en local pour analyser tous les articles.
 """
 
 from analyzer import (
     analyser_articles_en_base,
     analyser_sentiments_en_base,
     compter_analyses,
-    stats_themes
 )
 
 print("=" * 70)
@@ -51,5 +49,4 @@ else:
 print()
 print(f"📈 Total analyses en base : {compter_analyses()}")
 print()
-
 print("✅ Analyse terminée !")
