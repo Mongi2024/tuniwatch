@@ -1,6 +1,6 @@
 """
 Module auth.py - Authentification et sessions
-Etape D - Session 2 (avec db_universal)
+Version 2.0 - Avec bloc utilisateur dans la sidebar
 """
 
 import bcrypt
@@ -159,10 +159,19 @@ def require_login():
     """
     A appeler au debut de chaque page protegee.
     Si non connecte, affiche le login et arrete l'execution.
+    Si connecte, affiche le bloc utilisateur dans la sidebar.
     """
     if not est_connecte():
         afficher_page_login()
         st.stop()
+
+    # ✅ Afficher le bloc utilisateur + bouton déconnexion dans la sidebar
+    try:
+        import style
+        style.sidebar_user()
+    except Exception as e:
+        # Si le module style n'est pas disponible, on continue quand même
+        print(f"Erreur sidebar_user : {e}")
 
 
 def require_admin():

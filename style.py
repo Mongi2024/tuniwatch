@@ -1,7 +1,7 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v7 - FINAL COMPLET)
+# TuniWatch - Style Professionnel (v8 - avec sidebar user)
 # Fichier : style.py
-# Description : CSS premium + toutes les fonctions pour les pages
+# Description : CSS premium + sidebar utilisateur + déconnexion
 # ============================================================
 
 import streamlit as st
@@ -9,7 +9,7 @@ import re
 
 
 # ============================================================
-# 🔧 NETTOYAGE HTML (sans toucher aux accents)
+# 🔧 NETTOYAGE HTML
 # ============================================================
 def nettoyer_html(texte):
     """Nettoie UNIQUEMENT les balises HTML résiduelles."""
@@ -27,6 +27,100 @@ def nettoyer_html(texte):
 
 
 # ============================================================
+# 👤 BLOC UTILISATEUR DANS LA SIDEBAR
+# ============================================================
+def sidebar_user():
+    """
+    Affiche le bloc utilisateur connecté en haut de la sidebar
+    avec un bouton de déconnexion.
+    """
+    user = st.session_state.get("user")
+    if not user:
+        return
+
+    login = user.get("login", "Utilisateur")
+    role = user.get("role", "user")
+
+    # Emoji selon le rôle
+    emoji_role = {
+        "super_admin": "👑",
+        "admin": "🛡️",
+        "editeur": "✏️",
+        "lecteur": "👤",
+        "user": "👤",
+    }.get(role, "👤")
+
+    # Libellé du rôle en français
+    label_role = {
+        "super_admin": "Super Admin",
+        "admin": "Administrateur",
+        "editeur": "Éditeur",
+        "lecteur": "Lecteur",
+        "user": "Utilisateur",
+    }.get(role, role)
+
+    # Avatar : première lettre en majuscule
+    initiale = login[0].upper() if login else "?"
+
+    # Bloc HTML utilisateur
+    st.sidebar.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, rgba(230, 57, 70, 0.15) 0%, rgba(230, 57, 70, 0.05) 100%);
+        border: 1px solid rgba(230, 57, 70, 0.3);
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    ">
+        <div style="
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: #E63946;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        ">{initiale}</div>
+        <div style="flex: 1; overflow: hidden;">
+            <div style="
+                color: #FFFFFF;
+                font-weight: 700;
+                font-size: 0.9rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            ">{login}</div>
+            <div style="
+                color: #FFD166;
+                font-size: 0.75rem;
+                font-weight: 600;
+            ">{emoji_role} {label_role}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Bouton de déconnexion
+    if st.sidebar.button(
+        "🚪 Se déconnecter",
+        use_container_width=True,
+        key="btn_logout_sidebar"
+    ):
+        # Nettoyer la session
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+
+    # Séparateur
+    st.sidebar.markdown("---")
+
+
+# ============================================================
 # 🎨 APPLICATION DU STYLE
 # ============================================================
 def apply_style():
@@ -40,18 +134,18 @@ def apply_style():
 
     st.markdown("""
     <style>
-            /* Police principale */
-html, body, .stApp, [class*="css"] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-}
+        /* Police principale */
+        html, body, .stApp, [class*="css"] {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
 
-/* ⚠️ NE PAS toucher aux polices des icônes Streamlit */
-[class*="material-symbols"],
-[class*="Material Symbols"],
-[data-testid="stIconMaterial"],
-span[translate="no"] {
-    font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons', sans-serif !important;
-}
+        /* ⚠️ NE PAS toucher aux polices des icônes Streamlit */
+        [class*="material-symbols"],
+        [class*="Material Symbols"],
+        [data-testid="stIconMaterial"],
+        span[translate="no"] {
+            font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons', sans-serif !important;
+        }
 
         /* CONTENEUR */
         .main .block-container {
@@ -88,6 +182,19 @@ span[translate="no"] {
             font-weight: 700 !important;
         }
         section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.1) !important; }
+
+        /* Bouton déconnexion (sidebar) */
+        section[data-testid="stSidebar"] .stButton > button {
+            background: rgba(230, 57, 70, 0.15) !important;
+            border: 1px solid rgba(230, 57, 70, 0.4) !important;
+            color: #FF6B6B !important;
+            font-weight: 600 !important;
+            border-radius: 10px !important;
+        }
+        section[data-testid="stSidebar"] .stButton > button:hover {
+            background: rgba(230, 57, 70, 0.35) !important;
+            color: #FFFFFF !important;
+        }
 
         /* CARTES KPI */
         .kpi-card {
@@ -160,14 +267,14 @@ span[translate="no"] {
         .badge-negatif { background: rgba(239, 71, 111, 0.15) !important; color: #EF476F !important; }
         .badge-neutre  { background: rgba(255, 209, 102, 0.2) !important;  color: #B8860B !important; }
 
-        /* BOUTONS */
-        .stButton > button {
+        /* BOUTONS (contenu principal) */
+        .main .stButton > button {
             border-radius: 10px !important; font-weight: 600 !important;
             padding: 0.55rem 1.4rem !important; transition: all 0.2s ease !important;
             border: none !important; background: #E63946 !important;
             color: white !important; box-shadow: 0 2px 8px rgba(230, 57, 70, 0.2) !important;
         }
-        .stButton > button:hover {
+        .main .stButton > button:hover {
             background: #C1121F !important;
             transform: translateY(-2px) !important;
             box-shadow: 0 6px 16px rgba(230, 57, 70, 0.3) !important;
@@ -189,18 +296,10 @@ span[translate="no"] {
 # ============================================================
 def kpi_card(icon, label, value, trend=None, trend_type="positive",
              tendance=None, couleur=None, **kwargs):
-    """
-    Affiche une carte KPI professionnelle.
-    Accepte plusieurs noms de paramètres pour compatibilité :
-      - trend / tendance
-      - trend_type ("positive", "negative", "neutral")
-      - couleur (couleur de la bordure gauche)
-    """
-    # Compatibilité : tendance est un alias de trend
+    """Affiche une carte KPI professionnelle."""
     if trend is None and tendance is not None:
         trend = tendance
 
-    # Bordure personnalisée si couleur fournie
     border_style = f"border-left: 5px solid {couleur} !important;" if couleur else ""
 
     trend_html = ""
@@ -218,11 +317,7 @@ def kpi_card(icon, label, value, trend=None, trend_type="positive",
 
 
 def article_card(titre, source="", date="", sentiment=None, url=None, **kwargs):
-    """
-    Affiche une carte d'article professionnelle.
-    Accepte des paramètres supplémentaires (score, theme, emoji_theme, etc.)
-    sans planter.
-    """
+    """Affiche une carte d'article professionnelle."""
     titre_propre = nettoyer_html(titre)
     source_propre = nettoyer_html(source)
     date_propre = str(date or "").strip()
@@ -230,21 +325,18 @@ def article_card(titre, source="", date="", sentiment=None, url=None, **kwargs):
     if not titre_propre:
         titre_propre = "(Titre non disponible)"
 
-    # Badge de sentiment
     badge_html = ""
     if sentiment:
         sentiment_clean = str(sentiment).lower().strip()
         if sentiment_clean in ("positif", "negatif", "neutre"):
             badge_html = f'<span class="article-badge badge-{sentiment_clean}">{sentiment_clean}</span>'
 
-    # Lien
     url_clean = str(url or "").strip()
     link_html = (
         f'<a href="{url_clean}" target="_blank" rel="noopener" '
         f'style="color:#E63946; text-decoration:none; font-weight:600;">🔗 Lire</a>'
     ) if url_clean else ''
 
-    # Métadonnées
     meta_parts = [f'<span>📰 {source_propre}</span>']
     if date_propre:
         meta_parts.append(f'<span>📅 {date_propre[:10]}</span>')
@@ -283,10 +375,7 @@ def section_title(icone, titre, sous_titre=""):
 
 
 def page_header(titre, icone="", description="", badge=None):
-    """
-    Affiche un en-tête de page premium.
-    Utilisé par les pages Accueil, Analyse, Recherche, Médias, Actualités.
-    """
+    """Affiche un en-tête de page premium."""
     badge_html = ""
     if badge:
         badge_html = (
