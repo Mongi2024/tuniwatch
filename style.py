@@ -1,65 +1,31 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v3)
+# TuniWatch - Style Professionnel (v5 - SAFE)
 # Fichier : style.py
-# Description : CSS premium + réparation encodage
+# Description : CSS premium SANS altération des données
 # ============================================================
 
 import streamlit as st
 import re
 
 
-# ============================================================
-# 🔧 RÉPARATION DE L'ENCODAGE (Mojibake)
-# ============================================================
-def reparer_encodage(texte):
+def nettoyer_html(texte):
     """
-    Répare les caractères mal encodés (UTF-8 / Latin-1).
-    Exemple : 'l鈥檃bsence' → "l'absence", '茅' → 'é'
+    Nettoie UNIQUEMENT les balises HTML résiduelles.
+    NE TOUCHE PAS aux accents ni aux apostrophes.
     """
-    if not texte:
-        return texte
-
-    texte = str(texte)
-
-    # Table de correspondance des caractères cassés fréquents
-    corrections = {
-        # Apostrophes et guillemets
-        '鈥檕': 'ô', '鈥檃': "a", '鈥檜': "u", '鈥檈': "e",
-        '鈥': "'", '鈥': "'", '鈥': "'",
-        '鈥': '–', '鈥': '—',
-        '芦': '«', '禄': '»',
-        '鈥': '“', '鈥': '”',
-        # Accents français
-        '茅': 'é', '猫': 'è', '锚': 'ê', '毛': 'ë',
-        '卯': 'î', '茂': 'ï', '么': 'ô', '没': 'û',
-        '脿': 'à', '芒': 'â', '莽': 'ç', '鹿': 'ù',
-        '聳': 'œ', '聹': 'Œ', '聻': '€',
-        # Autres caractères fréquents
-        '鈥': '’', '鈥': '‘',
-    }
-
-    for casse, correct in corrections.items():
-        texte = texte.replace(casse, correct)
-
-    # Méthode plus robuste : tenter de re-décoder
-    try:
-        texte_corrige = texte.encode('latin-1', errors='ignore').decode('utf-8', errors='ignore')
-        if texte_corrige:
-            texte = texte_corrige
-    except (UnicodeDecodeError, UnicodeEncodeError):
-        pass
-
-    return texte
-
-
-def nettoyer_texte(texte):
-    """Nettoie le HTML et les caractères spéciaux."""
     if not texte:
         return ""
-    texte = reparer_encodage(texte)
-    texte = re.sub(r'<[^>]+>', '', str(texte))
-    texte = texte.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-    texte = texte.replace('&quot;', '"').replace('&#39;', "'").replace('&nbsp;', ' ')
+    texte = str(texte)
+    # Retirer uniquement les balises HTML
+    texte = re.sub(r'<[^>]+>', '', texte)
+    # Décoder quelques entités HTML basiques
+    texte = texte.replace('&amp;', '&')
+    texte = texte.replace('&lt;', '<')
+    texte = texte.replace('&gt;', '>')
+    texte = texte.replace('&quot;', '"')
+    texte = texte.replace('&nbsp;', ' ')
+    # Réduire les espaces multiples
+    texte = re.sub(r'\s+', ' ', texte)
     return texte.strip()
 
 
@@ -69,7 +35,6 @@ def nettoyer_texte(texte):
 def apply_style():
     """Applique le style CSS personnalisé à l'application."""
 
-    # Police Inter
     st.markdown("""
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -234,12 +199,17 @@ def kpi_card(icon: str, label: str, value: str, trend: str = None, trend_type: s
 def article_card(titre: str, source: str = "", date: str = "", sentiment: str = None, url: str = None, **kwargs):
     """
     Affiche une carte d'article professionnelle.
-    Répare automatiquement l'encodage et nettoie le HTML.
+    ⚠️ AUCUNE transformation d'encodage : on affiche le titre TEL QUEL.
+    On retire uniquement les balises HTML résiduelles.
     """
-    # 🔧 RÉPARER L'ENCODAGE + NETTOYER
-    titre_propre = nettoyer_texte(titre)
-    source_propre = nettoyer_texte(source)
+    # ⚠️ On retire UNIQUEMENT le HTML, PAS les accents ni apostrophes
+    titre_propre = nettoyer_html(titre)
+    source_propre = nettoyer_html(source)
     date_propre = str(date or "").strip()
+
+    # Si le titre est vraiment vide après nettoyage HTML
+    if not titre_propre:
+        titre_propre = "(Titre non disponible)"
 
     # Badge de sentiment
     badge_html = ""
