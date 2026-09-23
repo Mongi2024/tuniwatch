@@ -1,5 +1,5 @@
 # ============================================================
-# TuniWatch - Style Professionnel (v25 - CORRIGÉ FINAL)
+# TuniWatch - Style Professionnel (v26 - FINAL)
 # Fichier : style.py
 # ============================================================
 
@@ -53,13 +53,15 @@ def apply_style():
         .js-plotly-plot,
         .js-plotly-plot *,
         .plot-container,
-        .plot-container *,
-        .svg-container,
-        .svg-container *,
-        .main-svg,
-        .main-svg * {
+        .plot-container * {
             transition: none !important;
             animation: none !important;
+        }
+
+        /* Force iframe Plotly à 100% largeur */
+        iframe[title*="streamlit_components"] {
+            width: 100% !important;
+            border: none !important;
         }
 
         h1 { color: #1D3557 !important; font-weight: 800 !important; font-size: 2.2rem !important; letter-spacing: -0.8px !important; }
@@ -106,11 +108,6 @@ def apply_style():
             padding: 10px 14px !important;
             width: 100% !important;
             margin-top: 8px !important;
-        }
-
-        iframe[title*="plotly"] {
-            border-radius: 16px !important;
-            box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06) !important;
         }
 
         .kpi-card {
@@ -244,19 +241,19 @@ def sidebar_logout():
 
 
 # ============================================================
-# 📊 GRAPHIQUE SANS ANIMATION (CORRIGÉ - iframe components)
+# 📊 GRAPHIQUE SANS ANIMATION - LABELS NON COUPÉS
 # ============================================================
 def afficher_graphique(fig, hauteur=350):
     """
-    Affiche un graphique Plotly SANS animation via components.html().
-    ✅ Le graphique s'affiche correctement
-    ✅ Aucune animation
-    ✅ Rendu stable
+    Affiche un graphique Plotly SANS animation.
+    ✅ Labels non coupés (marge gauche 120px)
+    ✅ Iframe pleine largeur
+    ✅ Aucune vibration
     """
-    # Configuration du graphique
     fig.update_layout(
         height=hauteur,
-        margin=dict(l=40, r=40, t=30, b=50),
+        # Marges adaptées : 120px gauche pour labels longs, 60px droite, 40px haut, 60px bas
+        margin=dict(l=120, r=60, t=40, b=60),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="white",
         font=dict(family="Inter, sans-serif", size=12, color="#1D3557"),
@@ -265,14 +262,13 @@ def afficher_graphique(fig, hauteur=350):
         autosize=True,
     )
 
-    # ✅ Générer le HTML complet avec Plotly.js inclus
     html = pio.to_html(
         fig,
         include_plotlyjs="cdn",
         full_html=False,
         config={
             "displayModeBar": False,
-            "staticPlot": False,       # ⚡ False pour que ça s'affiche
+            "staticPlot": False,
             "responsive": True,
             "scrollZoom": False,
             "doubleClick": False,
@@ -282,22 +278,42 @@ def afficher_graphique(fig, hauteur=350):
         default_height=hauteur,
     )
 
-    # ✅ Afficher dans un iframe (permet le JS)
     components.html(
         f"""
         <html>
         <head>
             <style>
-                body {{ margin: 0; padding: 0; background: transparent; }}
-                .plotly-graph-div {{ border-radius: 16px; }}
+                html, body {{
+                    margin: 0;
+                    padding: 0;
+                    background: transparent;
+                    width: 100%;
+                    overflow: hidden;
+                }}
+                .plotly-graph-div {{
+                    width: 100% !important;
+                    border-radius: 16px;
+                }}
             </style>
         </head>
         <body>
             {html}
+            <script>
+                window.addEventListener('load', function() {{
+                    setTimeout(function() {{
+                        if (window.Plotly) {{
+                            var plots = document.querySelectorAll('.plotly-graph-div');
+                            plots.forEach(function(p) {{
+                                window.Plotly.Plots.resize(p);
+                            }});
+                        }}
+                    }}, 150);
+                }});
+            </script>
         </body>
         </html>
         """,
-        height=hauteur + 20,
+        height=hauteur + 30,
         scrolling=False,
     )
 
@@ -363,7 +379,7 @@ def appliquer_style():
 def configurer_graphique(fig, hauteur=350):
     fig.update_layout(
         height=hauteur,
-        margin=dict(l=40, r=40, t=30, b=50),
+        margin=dict(l=120, r=60, t=40, b=60),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="white",
         font=dict(family="Inter, sans-serif", size=12, color="#1D3557"),
