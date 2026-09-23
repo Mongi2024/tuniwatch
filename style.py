@@ -40,8 +40,18 @@ def apply_style():
 
     st.markdown("""
     <style>
-        /* POLICE */
-        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important; }
+            /* Police principale */
+html, body, .stApp, [class*="css"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ⚠️ NE PAS toucher aux polices des icônes Streamlit */
+[class*="material-symbols"],
+[class*="Material Symbols"],
+[data-testid="stIconMaterial"],
+span[translate="no"] {
+    font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons', sans-serif !important;
+}
 
         /* CONTENEUR */
         .main .block-container {
