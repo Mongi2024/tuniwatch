@@ -1,22 +1,59 @@
 """
 Module pdf_generator.py - Génération de rapports PDF professionnels
-Version 1.1 - Avec logo et WeasyPrint
+Version 2.0 - Streamlit-compatible (base64 + fallback)
 """
 
 import os
+import base64
 from datetime import datetime
 from weasyprint import HTML, CSS
-from db_universal import get_connexion
 
 
 # ============================================================
-# RÉCUPÉRATION DES DONNÉES
+# LOGO EN BASE64
 # ============================================================
+def get_logo_base64():
+    """Retourne le logo encodé en base64 (ou vide si absent)."""
+    logo_paths = [
+        "assets/logo_white.png",
+        "assets/logo_jdd.png",
+        "/root/tuniwatch/assets/logo_white.png",
+        "/root/tuniwatch/assets/logo_jdd.png",
+    ]
+    for path in logo_paths:
+        try:
+            if os.path.exists(path):
+                with open(path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode("utf-8")
+                return f"data:image/png;base64,{b64}"
+        except Exception:
+            continue
+    return ""
+
+
+# ============================================================
+# RÉCUPÉRATION DES DONNÉES (avec get_connexion)
+# ============================================================
+def _get_connexion_safe():
+    """Import get_connexion de manière safe."""
+    try:
+        from db_universal import get_connexion
+        return get_connexion()
+    except Exception:
+        return None
+
+
 def get_stats_globales():
     """Récupère les statistiques globales."""
-    conn = get_connexion()
+    conn = _get_connexion_safe()
     if conn is None:
-        return {}
+        return {
+            "total_articles": 0,
+            "total_sources": 0,
+            "total_analyses_themes": 0,
+            "total_analyses_sentiment": 0,
+            "score_moyen": 0.0,
+        }
 
     curseur = conn.cursor(dictionary=True)
     try:
@@ -34,7 +71,7 @@ def get_stats_globales():
             "total_sources": int(result.get("total_sources") or 0),
             "total_analyses_themes": int(result.get("total_analyses_themes") or 0),
             "total_analyses_sentiment": int(result.get("total_analyses_sentiment") or 0),
-            "score_moyen": round(float(result.get("score_moyen") or 0), 2)
+            "score_moyen": round(float(result.get("score_moyen") or 0), 2),
         }
     finally:
         curseur.close()
@@ -43,9 +80,9 @@ def get_stats_globales():
 
 def get_stats_sentiment():
     """Récupère la répartition des sentiments."""
-    conn = get_connexion()
+    conn = _get_connexion_safe()
     if conn is None:
-        return {}
+        return {"positifs": 0, "neutres": 0, "negatifs": 0}
 
     curseur = conn.cursor(dictionary=True)
     try:
@@ -60,7 +97,7 @@ def get_stats_sentiment():
         return {
             "positifs": int(result.get("positifs") or 0),
             "neutres": int(result.get("neutres") or 0),
-            "negatifs": int(result.get("negatifs") or 0)
+            "negatifs": int(result.get("negatifs") or 0),
         }
     finally:
         curseur.close()
@@ -69,7 +106,7 @@ def get_stats_sentiment():
 
 def get_stats_themes():
     """Récupère la répartition par thème."""
-    conn = get_connexion()
+    conn = _get_connexion_safe()
     if conn is None:
         return []
 
@@ -89,7 +126,7 @@ def get_stats_themes():
 
 def get_top_sources(limite=10):
     """Récupère les top sources."""
-    conn = get_connexion()
+    conn = _get_connexion_safe()
     if conn is None:
         return []
 
@@ -111,7 +148,7 @@ def get_top_sources(limite=10):
 
 def get_top_articles(limite=10):
     """Récupère les top articles."""
-    conn = get_connexion()
+    conn = _get_connexion_safe()
     if conn is None:
         return []
 
@@ -135,20 +172,37 @@ def get_top_articles(limite=10):
 # ============================================================
 # GÉNÉRATION DU HTML
 # ============================================================
-def generer_html_rapport():
-    """Génère le HTML du rapport."""
+def generer_html_rapport(stats=None, sentiment=None, themes=None, sources=None, articles=None):
+    """Génère le HTML du rapport avec les données fournies ou récupérées."""
 
-    stats = get_stats_globales()
-    sentiment = get_stats_sentiment()
-    themes = get_stats_themes()
-    sources = get_top_sources(10)
-    articles = get_top_articles(5)
+    if stats is None:
+        stats = get_stats_globales()
+    if sentiment is None:
+        sentiment = get_stats_sentiment()
+    if themes is None:
+        themes = get_stats_themes()
+    if sources is None:
+        sources = get_top_sources(10)
+    if articles is None:
+        articles = get_top_articles(5)
 
-    total_sent = sentiment.get("positifs", 0) + sentiment.get("neutres", 0) + sentiment.get("negatifs", 0)
+    total_sent = (
+        sentiment.get("positifs", 0)
+        + sentiment.get("neutres", 0)
+        + sentiment.get("negatifs", 0)
+    )
     pct_pos = (sentiment.get("positifs", 0) / total_sent * 100) if total_sent > 0 else 0
     pct_neu = (sentiment.get("neutres", 0) / total_sent * 100) if total_sent > 0 else 0
     pct_neg = (sentiment.get("negatifs", 0) / total_sent * 100) if total_sent > 0 else 0
 
+    # Logo
+    logo_src = get_logo_base64()
+    if logo_src:
+        logo_html = f'<img src="{logo_src}" class="header-logo-img" alt="Logo" />'
+    else:
+        logo_html = '<div class="header-logo-text">TuniWatch</div>'
+
+    # Thèmes
     themes_html = ""
     max_theme = max([t["nb_articles"] for t in themes]) if themes else 1
     for t in themes[:10]:
@@ -163,25 +217,31 @@ def generer_html_rapport():
         </div>
         """
 
+    # Sources
     sources_html = ""
     for s in sources:
         sources_html += f"""
         <tr>
-            <td>{s['source'][:60]}</td>
+            <td>{str(s['source'])[:60]}</td>
             <td class="text-right">{s['nb_articles']}</td>
         </tr>
         """
 
+    # Articles
     articles_html = ""
     for i, a in enumerate(articles, 1):
+        titre = str(a.get("titre", ""))[:150]
+        theme = str(a.get("theme", ""))
+        score = a.get("score", 0) or 0
+        source = str(a.get("source", ""))
         articles_html += f"""
         <div class="article">
             <div class="article-header">
-                <span class="article-theme">{a.get('theme', '')}</span>
-                <span class="article-score">Score : {a.get('score', 0):.2f}</span>
+                <span class="article-theme">{theme}</span>
+                <span class="article-score">Score : {score:.2f}</span>
             </div>
-            <div class="article-title">{i}. {a['titre'][:150]}</div>
-            <div class="article-source">📰 {a['source']}</div>
+            <div class="article-title">{i}. {titre}</div>
+            <div class="article-source">Source : {source}</div>
         </div>
         """
 
@@ -194,42 +254,42 @@ def generer_html_rapport():
     </head>
     <body>
         <div class="header">
-            <img src="/root/tuniwatch/assets/logo_white.png" class="header-logo-img" alt="TuniWatch Logo" />
+            {logo_html}
             <h1 class="header-title">TuniWatch</h1>
             <p class="header-subtitle">Observatoire des médias tunisiens</p>
             <p class="header-date">Rapport généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}</p>
         </div>
 
         <div class="section">
-            <h2>📊 1. Résumé exécutif</h2>
+            <h2>1. Résumé exécutif</h2>
             <div class="kpi-grid">
                 <div class="kpi">
                     <div class="kpi-value">{stats['total_articles']:,}</div>
-                    <div class="kpi-label">📰 Articles collectés</div>
+                    <div class="kpi-label">Articles collectés</div>
                 </div>
                 <div class="kpi">
                     <div class="kpi-value">{stats['total_sources']}</div>
-                    <div class="kpi-label">📡 Sources actives</div>
+                    <div class="kpi-label">Sources actives</div>
                 </div>
                 <div class="kpi">
                     <div class="kpi-value">{stats['total_analyses_themes']}</div>
-                    <div class="kpi-label">🎯 Analyses thèmes</div>
+                    <div class="kpi-label">Analyses thèmes</div>
                 </div>
                 <div class="kpi">
                     <div class="kpi-value">{stats['total_analyses_sentiment']}</div>
-                    <div class="kpi-label">💭 Analyses sentiments</div>
+                    <div class="kpi-label">Analyses sentiments</div>
                 </div>
             </div>
             <p class="comment">
-                📌 L'observatoire TuniWatch a collecté <b>{stats['total_articles']:,} articles</b> provenant de 
-                <b>{stats['total_sources']} sources tunisiennes</b> (presse, radios, TV). 
-                {stats['total_analyses_themes']} analyses thématiques et {stats['total_analyses_sentiment']} analyses 
-                de sentiment ont été réalisées.
+                L'observatoire TuniWatch a collecté <b>{stats['total_articles']:,} articles</b>
+                provenant de <b>{stats['total_sources']} sources tunisiennes</b> (presse, radios, TV).
+                {stats['total_analyses_themes']} analyses thématiques et
+                {stats['total_analyses_sentiment']} analyses de sentiment ont été réalisées.
             </p>
         </div>
 
         <div class="section">
-            <h2>💭 2. Analyse de sentiment</h2>
+            <h2>2. Analyse de sentiment</h2>
             <table class="table">
                 <tr>
                     <th>Sentiment</th>
@@ -237,17 +297,17 @@ def generer_html_rapport():
                     <th class="text-right">Pourcentage</th>
                 </tr>
                 <tr>
-                    <td>🟢 Positif</td>
+                    <td>Positif</td>
                     <td class="text-right">{sentiment.get('positifs', 0)}</td>
                     <td class="text-right">{pct_pos:.1f}%</td>
                 </tr>
                 <tr>
-                    <td>🟡 Neutre</td>
+                    <td>Neutre</td>
                     <td class="text-right">{sentiment.get('neutres', 0)}</td>
                     <td class="text-right">{pct_neu:.1f}%</td>
                 </tr>
                 <tr>
-                    <td>🔴 Négatif</td>
+                    <td>Négatif</td>
                     <td class="text-right">{sentiment.get('negatifs', 0)}</td>
                     <td class="text-right">{pct_neg:.1f}%</td>
                 </tr>
@@ -257,21 +317,17 @@ def generer_html_rapport():
                     <td class="text-right"><b>100%</b></td>
                 </tr>
             </table>
-            <p class="comment">
-                📌 Sur les {total_sent} articles analysés, {pct_neu:.1f}% ont un ton neutre, {pct_pos:.1f}% sont 
-                positifs et {pct_neg:.1f}% sont négatifs. Le score moyen global est de {stats['score_moyen']}.
-            </p>
         </div>
 
         <div class="section">
-            <h2>🎯 3. Répartition par thème</h2>
+            <h2>3. Répartition par thème</h2>
             <div class="bars">
                 {themes_html}
             </div>
         </div>
 
         <div class="section">
-            <h2>📡 4. Sources les plus actives</h2>
+            <h2>4. Sources les plus actives</h2>
             <table class="table">
                 <tr>
                     <th>Source</th>
@@ -282,12 +338,12 @@ def generer_html_rapport():
         </div>
 
         <div class="section">
-            <h2>🏆 5. Articles les plus pertinents</h2>
+            <h2>5. Articles les plus pertinents</h2>
             {articles_html}
         </div>
 
         <div class="section">
-            <h2>🔬 6. Méthodologie</h2>
+            <h2>6. Méthodologie</h2>
             <p><b>Collecte :</b> Articles collectés via flux RSS et scraping.</p>
             <p><b>Analyse :</b> 14 thèmes sociétaux surveillés, 930 mots-clés (FR + AR).</p>
             <p><b>Sentiment :</b> Analyse par modèle Ollama (qwen3.5:4b).</p>
@@ -295,19 +351,18 @@ def generer_html_rapport():
         </div>
 
         <div class="footer">
-            <b>🇹🇳 TuniWatch</b> — Observatoire des médias tunisiens<br>
+            <b>TuniWatch</b> - Observatoire des médias tunisiens<br>
             Rapport généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}<br>
-            © 2026 Khadraoui Mongi — Tous droits réservés
+            © 2026 Khadraoui Mongi - Tous droits réservés
         </div>
     </body>
     </html>
     """
-
     return html
 
 
 # ============================================================
-# STYLE CSS POUR LE PDF
+# STYLE CSS
 # ============================================================
 CSS_PDF = """
 @page {
@@ -327,7 +382,6 @@ body {
     line-height: 1.5;
 }
 
-/* EN-TÊTE */
 .header {
     text-align: center;
     border-bottom: 3px solid #e70013;
@@ -340,6 +394,13 @@ body {
     max-height: 100px;
     margin-bottom: 10px;
     display: inline-block;
+}
+
+.header-logo-text {
+    font-size: 36pt;
+    font-weight: bold;
+    color: #e70013;
+    margin-bottom: 10px;
 }
 
 .header-title {
@@ -361,7 +422,6 @@ body {
     margin: 10px 0;
 }
 
-/* SECTIONS */
 .section {
     margin-bottom: 30px;
     page-break-inside: avoid;
@@ -375,7 +435,6 @@ body {
     margin-bottom: 15px;
 }
 
-/* KPI */
 .kpi-grid {
     display: flex;
     gap: 15px;
@@ -404,7 +463,6 @@ body {
     margin-top: 5px;
 }
 
-/* TABLES */
 .table {
     width: 100%;
     border-collapse: collapse;
@@ -438,7 +496,6 @@ body {
     text-align: right;
 }
 
-/* BARS */
 .bars {
     margin: 15px 0;
 }
@@ -478,7 +535,6 @@ body {
     color: #e70013;
 }
 
-/* ARTICLES */
 .article {
     background: #f8f9fa;
     border-left: 4px solid #e70013;
@@ -519,7 +575,6 @@ body {
     color: #888;
 }
 
-/* COMMENTAIRES */
 .comment {
     background: #fff8e1;
     border-left: 4px solid #f39c12;
@@ -530,7 +585,6 @@ body {
     border-radius: 5px;
 }
 
-/* FOOTER */
 .footer {
     text-align: center;
     border-top: 2px solid #e70013;
@@ -543,11 +597,22 @@ body {
 
 
 # ============================================================
-# GÉNÉRATION DU PDF
+# GÉNÉRATION DU PDF (bytes)
+# ============================================================
+def generer_pdf_bytes(stats=None, sentiment=None, themes=None, sources=None, articles=None):
+    """Génère le PDF et retourne les bytes (pour Streamlit)."""
+    html_content = generer_html_rapport(stats, sentiment, themes, sources, articles)
+    pdf_bytes = HTML(string=html_content).write_pdf(
+        stylesheets=[CSS(string=CSS_PDF)]
+    )
+    return pdf_bytes
+
+
+# ============================================================
+# GÉNÉRATION DU PDF (fichier)
 # ============================================================
 def generer_pdf(output_path=None):
-    """Génère le rapport PDF complet."""
-
+    """Génère le rapport PDF et le sauvegarde sur le disque."""
     if output_path is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = f"/root/tuniwatch/rapports/rapport_tuniwatch_{timestamp}.pdf"
@@ -555,7 +620,6 @@ def generer_pdf(output_path=None):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     html_content = generer_html_rapport()
-
     HTML(string=html_content).write_pdf(
         output_path,
         stylesheets=[CSS(string=CSS_PDF)]
