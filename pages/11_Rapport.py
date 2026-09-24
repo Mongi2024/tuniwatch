@@ -519,6 +519,50 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("<br><br>", unsafe_allow_html=True)
+# ============================================================
+# BOUTON DE TÉLÉCHARGEMENT PDF
+# ============================================================
+st.markdown("---")
+st.subheader("📥 Télécharger le rapport PDF")
+st.caption("Génère un PDF professionnel du rapport affiché ci-dessus.")
+
+if st.button("🔄 Générer le PDF", use_container_width=True, type="primary", key="pdf_generate_btn"):
+    with st.spinner("Génération du PDF en cours..."):
+        try:
+            from pdf_generator import generer_pdf_bytes
+            from datetime import datetime
+
+            # Générer le PDF avec les données déjà chargées
+            pdf_bytes = generer_pdf_bytes(
+                stats=kpis,
+                sentiment=sentiment,
+                themes=stats_themes,
+                sources=top_sources,
+                articles=top_articles
+            )
+
+            # Nom du fichier
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"rapport_tuniwatch_{timestamp}.pdf"
+
+            # Bouton de téléchargement
+            st.download_button(
+                label="📥 Cliquez ici pour télécharger le PDF",
+                data=pdf_bytes,
+                file_name=filename,
+                mime="application/pdf",
+                use_container_width=True,
+                key="pdf_download_btn"
+            )
+
+            st.success(f"✅ PDF généré ! Taille : {len(pdf_bytes) / 1024:.1f} KB")
+            st.info("💡 Cliquez sur le bouton ci-dessus pour télécharger le fichier.")
+
+        except ImportError as e:
+            st.error(f"❌ Erreur d'import : {e}")
+            st.info("Vérifiez que `pdf_generator.py` existe et que `weasyprint` est dans requirements.txt")
+        except Exception as e:
+            st.error(f"❌ Erreur : {e}")
 
 # ============================================================
 # PIED DE PAGE DU RAPPORT
