@@ -105,30 +105,33 @@ else:
         lambda g: COULEUR_HOMME if g == "homme" else COULEUR_FEMME
     )
 
+    # Affichage : uniquement le pourcentage
     fig_top = go.Figure()
     for _, row in df_top.iterrows():
         fig_top.add_trace(go.Bar(
             y=[row["nom_fr"]],
-            x=[row["mentions"]],
+            x=[row["pourcentage"]],
             orientation="h",
             marker=dict(color=row["couleur"]),
-            text=f"{row['mentions']} ({row['pourcentage']:.1f}%) — FR:{row['mentions_fr']} AR:{row['mentions_ar']}",
+            text="{}%".format(round(row["pourcentage"], 1)),
             textposition="outside",
+            textfont=dict(size=14, color="#1D3557"),
             showlegend=False,
             hovertemplate=(
                 f"<b>{row['nom_fr']}</b><br>"
                 f"Genre: {'Homme' if row['genre'] == 'homme' else 'Femme'}<br>"
                 f"Parti: {row.get('parti', 'N/A')}<br>"
                 f"Fonction: {row.get('fonction', 'N/A')}<br>"
-                f"Mentions: {row['mentions']}<br>"
-                f"FR: {row['mentions_fr']} | AR: {row['mentions_ar']}"
+                f"Part: {row['pourcentage']:.1f}%<br>"
+                f"Mentions: {row['mentions']} (AR: {row['mentions_ar']} | FR: {row['mentions_fr']})"
                 "<extra></extra>"
             ),
         ))
     fig_top.update_layout(
-        height=max(400, len(df_top) * 45),
-        margin=dict(l=20, r=250, t=20, b=20),
-        xaxis_title="Nombre de mentions",
+        height=max(400, len(df_top) * 50),
+        margin=dict(l=20, r=100, t=20, b=20),
+        xaxis_title="Part des mentions (%)",
+        xaxis=dict(range=[0, max(df_top["pourcentage"]) * 1.2]),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter, sans-serif"),
