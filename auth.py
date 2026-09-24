@@ -1,11 +1,21 @@
 """
 Module auth.py - Authentification et sessions
-Version 2.0 - Avec bloc utilisateur dans la sidebar
+Version 3.0 - Avec logs d'activité
 """
 
 import bcrypt
 import streamlit as st
 from db_universal import get_connexion
+
+# Import des fonctions de log
+try:
+    from activity_logger import log_login, log_logout, log_login_failed
+    LOGS_ACTIFS = True
+except ImportError:
+    LOGS_ACTIFS = False
+    def log_login(user): pass
+    def log_logout(user): pass
+    def log_login_failed(user): pass
 
 
 # ============================================================
@@ -31,6 +41,9 @@ def verifier_identifiants(login, mot_de_passe):
         user = curseur.fetchone()
 
         if not user:
+            # Log : utilisateur inexistant
+            if LOGS_ACTIFS:
+                log_login_failed(login)
             return None
 
         # Verifier le mot de passe
@@ -39,12 +52,18 @@ def verifier_identifiants(login, mot_de_passe):
             mot_de_passe.encode("utf-8"),
             hash_stocke.encode("utf-8")
         ):
+            # Log : connexion réussie
+            if LOGS_ACTIFS:
+                log_login(user["login"])
             return {
                 "id": user["id"],
                 "login": user["login"],
                 "role": user["role"]
             }
 
+        # Log : mauvais mot de passe
+        if LOGS_ACTIFS:
+            log_login_failed(login)
         return None
 
     except Exception as e:
@@ -86,8 +105,14 @@ def connecter(user_info):
 
 
 def deconnecter():
-    """Efface la session utilisateur."""
+    """Efface la session utilisateur et log la déconnexion."""
     if "user" in st.session_state:
+        user = st.session_state.get("user")
+        if user and LOGS_ACTIFS:
+            try:
+                log_logout(user.get("login", "unknown"))
+            except Exception:
+                pass
         del st.session_state["user"]
 
 
@@ -97,7 +122,6 @@ def deconnecter():
 def afficher_page_login():
     """Affiche la page de connexion et gere la soumission."""
 
-    # Centrer le formulaire
     col1, col2, col3 = st.columns([1, 2, 1])
 
     with col2:
@@ -110,7 +134,6 @@ def afficher_page_login():
 
         st.markdown("---")
 
-        # Formulaire
         with st.form("form_login"):
             st.subheader("🔐 Connexion")
             st.write("Entrez vos identifiants pour accéder au dashboard.")
@@ -165,20 +188,17 @@ def require_login():
         afficher_page_login()
         st.stop()
 
-    # ✅ Afficher le bloc utilisateur + bouton déconnexion dans la sidebar
+    # Afficher le bloc utilisateur + bouton déconnexion
     try:
         import style
         style.sidebar_user()
+        style.sidebar_logout()
     except Exception as e:
-        # Si le module style n'est pas disponible, on continue quand même
-        print(f"Erreur sidebar_user : {e}")
+        print(f"Erreur sidebar : {e}")
 
 
 def require_admin():
-    """
-    A appeler au debut des pages admin.
-    Bloque l'acces si l'utilisateur n'est pas admin.
-    """
+    """Bloque l'acces si l'utilisateur n'est pas admin."""
     require_login()
     if not est_admin():
         st.error("🚫 Accès refusé — Cette page est réservée aux administrateurs.")
@@ -190,10 +210,7 @@ def require_admin():
 
 
 def require_super_admin():
-    """
-    A appeler sur les pages sensibles (Admin, Utilisateurs).
-    Bloque l'acces si l'utilisateur n'est pas super_admin.
-    """
+    """Bloque l'acces si l'utilisateur n'est pas super_admin."""
     require_login()
     if not est_super_admin():
         st.error("🚫 Accès refusé — Cette page est réservée au SUPER ADMINISTRATEUR.")
@@ -202,46 +219,3 @@ def require_super_admin():
             f"avec le rôle **{get_user()['role']}**."
         )
         st.stop()
-
-
-# ============================================================
-# TEST DU MODULE (execution directe)
-# ============================================================
-if __name__ == "__main__":
-    print("=" * 60)
-    print("TEST DU MODULE auth.py")
-    print("=" * 60)
-    print()
-
-    # Test 1 : bons identifiants (super_admin)
-    resultat = verifier_identifiants("superadmin", "SuperAdmin2026!")
-    if resultat:
-        print(f"OK - Connexion super_admin : {resultat}")
-    else:
-        print("ECHEC - superadmin non trouve")
-
-    print()
-
-    # Test 2 : bons identifiants (admin)
-    resultat = verifier_identifiants("admin", "Admin2026!")
-    if resultat:
-        print(f"OK - Connexion admin : {resultat}")
-    else:
-        print("Note - admin avec ancien mot de passe (peut avoir change)")
-
-    print()
-
-    # Test 3 : mauvais mot de passe
-    resultat = verifier_identifiants("admin", "mauvais")
-    print(f"Test mauvais mdp : {resultat} (doit etre None)")
-
-    print()
-
-    # Test 4 : utilisateur inexistant
-    resultat = verifier_identifiants("inconnu", "peu importe")
-    print(f"Test utilisateur inexistant : {resultat} (doit etre None)")
-
-    print()
-    print("=" * 60)
-    print("TEST TERMINE")
-    print("=" * 60)
