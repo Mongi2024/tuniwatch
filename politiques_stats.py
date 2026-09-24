@@ -16,7 +16,6 @@ def generer_variantes(nom_fr, nom_ar=None, stricte=False):
 
     if nom_fr:
         variantes.add(nom_fr)
-        # Sans accents
         sans_accents = (nom_fr
             .replace('ï', 'i').replace('é', 'e').replace('è', 'e')
             .replace('ê', 'e').replace('à', 'a').replace('â', 'a')
@@ -26,7 +25,6 @@ def generer_variantes(nom_fr, nom_ar=None, stricte=False):
         if sans_accents != nom_fr:
             variantes.add(sans_accents)
 
-        # Variantes souples uniquement si NON stricte
         if not stricte:
             if nom_fr.endswith('ed'):
                 variantes.add(nom_fr[:-1])
@@ -39,11 +37,9 @@ def generer_variantes(nom_fr, nom_ar=None, stricte=False):
 
     if nom_ar:
         variantes.add(nom_ar)
-        # Sans chadda
         v_sans_chadda = nom_ar.replace('ّ', '')
         if v_sans_chadda != nom_ar:
             variantes.add(v_sans_chadda)
-        # Sans alif hamza
         v_sans_hamza = nom_ar.replace('أ', 'ا').replace('إ', 'ا')
         if v_sans_hamza != nom_ar:
             variantes.add(v_sans_hamza)
