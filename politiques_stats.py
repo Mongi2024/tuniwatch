@@ -6,46 +6,34 @@ Version 3.0 - Variantes arabes + Pourcentages + Langues
 from db_universal import get_connexion
 
 
-# ============================================================
-# VARIANTES DE NOMS
-# ============================================================
-
 def generer_variantes(nom_fr, nom_ar=None):
     """Genere toutes les variantes possibles d'un nom."""
     variantes = set()
 
     if nom_fr:
         variantes.add(nom_fr)
-        # Sans accents
         sans_accents = (nom_fr
             .replace('ï', 'i').replace('é', 'e').replace('è', 'e')
             .replace('ê', 'e').replace('à', 'a').replace('â', 'a')
             .replace('ô', 'o').replace('û', 'u').replace('ç', 'c')
-            .replace('î', 'i').replace('ô', 'o')
+            .replace('î', 'i')
         )
         variantes.add(sans_accents)
-        # Sans "ed" final
         if nom_fr.endswith('ed'):
             variantes.add(nom_fr[:-1])
-        # Sans particule
         for particule in [' Ben ', ' El ', ' Al ', ' Caid ', ' Caïd ']:
             if particule in nom_fr:
                 variantes.add(nom_fr.replace(particule, ' '))
-        # Nom de famille seul (dernier mot)
         mots = nom_fr.split()
         if len(mots) >= 2 and len(mots[-1]) >= 4:
             variantes.add(mots[-1])
 
     if nom_ar:
         variantes.add(nom_ar)
-        # Sans chadda
         variantes.add(nom_ar.replace('ّ', ''))
-        # Sans alif hamza
         variantes.add(nom_ar.replace('أ', 'ا').replace('إ', 'ا'))
-        # Sans ta marbouta
         if nom_ar.endswith('ة'):
             variantes.add(nom_ar[:-1])
-        # Dernier mot arabe seul (nom de famille)
         mots_ar = nom_ar.split()
         if len(mots_ar) >= 2 and len(mots_ar[-1]) >= 3:
             variantes.add(mots_ar[-1])
@@ -73,10 +61,6 @@ def _detecter_langue(texte):
             return 'ar'
     return 'fr'
 
-
-# ============================================================
-# FONCTIONS PRINCIPALES
-# ============================================================
 
 def liste_personnalites():
     """Liste toutes les personnalites actives."""
@@ -118,13 +102,12 @@ def mentions_par_langue(nom_fr, nom_ar=None):
     """Compte les mentions par langue (FR / AR)."""
     conn = get_connexion()
     if conn is None:
-        return {"fr": 0, "ar": 0}
+        return {"fr": 0, "ar": 0, "total": 0}
     curseur = conn.cursor(dictionary=True)
     try:
         variantes = generer_variantes(nom_fr, nom_ar)
         clause, params = _construire_clause_recherche(variantes)
-        curseur.execute("""
-            SELECT titre, description FROM articles WHERE """ + clause, params)
+        curseur.execute("SELECT titre, description FROM articles WHERE " + clause, params)
         rows = curseur.fetchall()
         fr = 0
         ar = 0
@@ -186,10 +169,9 @@ def top_personnalites(limite=10):
 
     resultats.sort(key=lambda x: x["mentions"], reverse=True)
 
-    # Calculer les pourcentages
     total = sum(r["mentions"] for r in resultats)
     for r in resultats:
-        r["pourcentage"] = (r["mentions"] / total * 100) if total > 0 else 0
+        r["pourcentage"] = round((r["mentions"] / total * 100), 1) if total > 0 else 0
 
     return resultats[:limite], total
 
@@ -276,9 +258,6 @@ def mentions_par_genre_et_media(limite_medias=10):
         conn.close()
 
 
-# ============================================================
-# TEST
-# ============================================================
 if __name__ == "__main__":
     print("=" * 70)
     print("TEST politiques_stats.py v3.0")
