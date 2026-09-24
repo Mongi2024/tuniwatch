@@ -1,10 +1,19 @@
 """
 Module alert_detector.py - Detection automatique d'anomalies
-Etape H - Session 1 (avec db_universal + fix SQLite)
+Version 2.0 - Avec logs d'activité
 """
 
 from db_universal import get_connexion
 from datetime import datetime, timedelta
+
+# Import des fonctions de log
+try:
+    from activity_logger import log_activity, log_error
+    LOGS_ACTIFS = True
+except ImportError:
+    LOGS_ACTIFS = False
+    def log_activity(user, action, details=""): pass
+    def log_error(user, error): pass
 
 
 # ============================================================
@@ -20,11 +29,9 @@ def detecter_pics_mentions():
     alertes = []
 
     try:
-        # Dates calculees en Python (compatible MySQL + SQLite)
         date_3j = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
         date_10j = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d %H:%M:%S")
 
-        # Articles recents (3 derniers jours)
         curseur.execute("""
             SELECT at.theme, COUNT(DISTINCT at.article_id) AS nb_recents
             FROM articles_themes at
@@ -34,7 +41,6 @@ def detecter_pics_mentions():
         """, (date_3j,))
         recents = {r["theme"]: int(r["nb_recents"]) for r in curseur.fetchall()}
 
-        # Articles precedents (7 jours avant)
         curseur.execute("""
             SELECT at.theme, COUNT(DISTINCT at.article_id) AS nb_anciens
             FROM articles_themes at
@@ -44,7 +50,6 @@ def detecter_pics_mentions():
         """, (date_10j, date_3j))
         anciens = {r["theme"]: int(r["nb_anciens"]) for r in curseur.fetchall()}
 
-        # Comparer
         for theme, nb_recent in recents.items():
             nb_ancien = anciens.get(theme, 0)
             if nb_recent >= 5 and nb_ancien > 0:
@@ -58,6 +63,8 @@ def detecter_pics_mentions():
 
     except Exception as e:
         print(f"Erreur pics : {e}")
+        if LOGS_ACTIFS:
+            log_error("system", f"detecter_pics_mentions: {e}")
     finally:
         curseur.close()
         conn.close()
@@ -97,6 +104,8 @@ def detecter_sentiment_negatif():
 
     except Exception as e:
         print(f"Erreur sentiment : {e}")
+        if LOGS_ACTIFS:
+            log_error("system", f"detecter_sentiment_negatif: {e}")
     finally:
         curseur.close()
         conn.close()
@@ -114,7 +123,6 @@ def detecter_baisse_activite():
     alertes = []
 
     try:
-        # Dates calculees en Python
         date_7j = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
         date_14j = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -149,6 +157,8 @@ def detecter_baisse_activite():
 
     except Exception as e:
         print(f"Erreur baisse : {e}")
+        if LOGS_ACTIFS:
+            log_error("system", f"detecter_baisse_activite: {e}")
     finally:
         curseur.close()
         conn.close()
@@ -166,7 +176,6 @@ def detecter_volume_global():
     alertes = []
 
     try:
-        # Date calculee en Python
         date_7j = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
 
         curseur.execute("""
@@ -194,6 +203,8 @@ def detecter_volume_global():
 
     except Exception as e:
         print(f"Erreur volume : {e}")
+        if LOGS_ACTIFS:
+            log_error("system", f"detecter_volume_global: {e}")
     finally:
         curseur.close()
         conn.close()
@@ -212,10 +223,8 @@ def sauvegarder_alerte(alerte):
 
     curseur = conn.cursor()
     try:
-        # Date calculee en Python
         date_24h = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
 
-        # Verifier si alerte similaire dans les 24h
         curseur.execute("""
             SELECT id FROM alertes
             WHERE message = %s AND date_creation >= %s
@@ -233,6 +242,8 @@ def sauvegarder_alerte(alerte):
         return True
     except Exception as e:
         print(f"Erreur insertion : {e}")
+        if LOGS_ACTIFS:
+            log_error("system", f"sauvegarder_alerte: {e}")
         return False
     finally:
         curseur.close()
@@ -277,6 +288,14 @@ def lancer_detection_complete():
             nb_sauvees += 1
 
     print(f"   {nb_sauvees} nouvelle(s) alerte(s) sauvegardee(s)")
+
+    # Log dans activity_logger
+    if LOGS_ACTIFS:
+        log_activity(
+            "system",
+            "run_alert_detection",
+            f"detectees={len(toutes_alertes)} sauvees={nb_sauvees}"
+        )
 
     return {
         "detectees": len(toutes_alertes),
@@ -430,7 +449,6 @@ def get_articles_lies_alerte(alerte):
         mot_cle = alerte.get("mot_cle", "")
         message = alerte.get("message", "").lower()
 
-        # Cas 1 : Alerte sentiment
         if "sentiment" in message:
             curseur.execute("""
                 SELECT DISTINCT
@@ -458,7 +476,6 @@ def get_articles_lies_alerte(alerte):
                 for r in rows
             ]
 
-        # Cas 2 : Pic de mentions (7 derniers jours)
         if "pic" in message:
             date_7j = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
             curseur.execute("""
@@ -483,7 +500,6 @@ def get_articles_lies_alerte(alerte):
                 for r in rows
             ]
 
-        # Cas 3 : Baisse d'activite
         if "baisse" in message:
             curseur.execute("""
                 SELECT DISTINCT
@@ -507,7 +523,6 @@ def get_articles_lies_alerte(alerte):
                 for r in rows
             ]
 
-        # Cas 4 : Global
         if mot_cle == "global":
             curseur.execute("""
                 SELECT id, titre, source, url
@@ -526,7 +541,6 @@ def get_articles_lies_alerte(alerte):
                 for r in rows
             ]
 
-        # Cas par defaut
         curseur.execute("""
             SELECT DISTINCT
                 a.id, a.titre, a.source, a.url, a.date_publication,
@@ -551,6 +565,8 @@ def get_articles_lies_alerte(alerte):
 
     except Exception as e:
         print(f"Erreur get_articles_lies_alerte : {e}")
+        if LOGS_ACTIFS:
+            log_error("system", f"get_articles_lies_alerte: {e}")
         return []
     finally:
         curseur.close()
@@ -572,11 +588,10 @@ if __name__ == "__main__":
     print(f"   Non lues : {stats.get('non_lues', 0)}")
     print()
 
-    alertes = lister_alertes(limite=3)
-    print(f"Test articles lies ({len(alertes)} alertes) :")
-    for alerte in alertes:
-        articles = get_articles_lies_alerte(alerte)
-        print(f"   - {alerte['message'][:60]}... -> {len(articles)} articles")
+    print("Lancement de la détection complète...")
+    resultat = lancer_detection_complete()
+    print()
+    print(f"Résultat : {resultat['detectees']} détectées, {resultat['sauvees']} sauvegardées")
     print()
 
     print("=" * 60)
