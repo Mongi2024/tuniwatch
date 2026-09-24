@@ -1,6 +1,6 @@
 """
 Page 14_Personnalites.py - Analyse des personnalités politiques
-Version 2.0 - Top + H/F + Médias + Partis + Période + Comparaison
+Version 3.0 - Pourcentages + Cache + Priorité arabe
 """
 
 import streamlit as st
@@ -25,7 +25,48 @@ st.set_page_config(
 COULEUR_HOMME = "#1D3557"
 COULEUR_FEMME = "#EF476F"
 
-# En-tête
+
+# ============================================================
+# FONCTIONS AVEC CACHE
+# ============================================================
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_top(limite, jours):
+    return top_personnalites(limite, jours=jours)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_repartition(jours):
+    return repartition_genre(jours=jours)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_media(limite, jours):
+    return mentions_par_genre_et_media(limite, jours=jours)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_parti(jours):
+    return mentions_par_parti(jours=jours)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_stats():
+    return stats_globales()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_personnalites():
+    return liste_personnalites()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_comparaison(noms_tuple, jours):
+    return comparer_personnalites(list(noms_tuple), jours=jours)
+
+
+# ============================================================
+# EN-TÊTE
+# ============================================================
 st.title("🏛️ Personnalités politiques / الشخصيات السياسية")
 st.markdown("""
 <div style="background: linear-gradient(90deg, #E63946 0%, #1D3557 100%);
@@ -36,6 +77,7 @@ st.markdown("""
     </p>
 </div>
 """, unsafe_allow_html=True)
+
 
 # ============================================================
 # FILTRES
@@ -58,17 +100,19 @@ with col_f2:
     )
 
 with col_f3:
-    st.write("")  # spacer
+    st.write("")
+
 
 # ============================================================
-# CHARGEMENT
+# CHARGEMENT AVEC CACHE
 # ============================================================
-with st.spinner("Chargement des données..."):
-    top, total_mentions = top_personnalites(10, jours=periode)
-    rep = repartition_genre(jours=periode)
-    par_media = mentions_par_genre_et_media(limite_medias, jours=periode)
-    par_parti = mentions_par_parti(jours=periode)
-    stats = stats_globales()
+with st.spinner("Chargement des données (première fois ~15 sec)..."):
+    top, total_mentions = cached_top(10, periode)
+    rep = cached_repartition(periode)
+    par_media = cached_media(limite_medias, periode)
+    par_parti = cached_parti(periode)
+    stats = cached_stats()
+
 
 # ============================================================
 # KPI
@@ -92,20 +136,20 @@ with col5:
 
 st.markdown("---")
 
+
 # ============================================================
-# SECTION 1 — TOP 10
+# SECTION 1 — TOP 10 (UNIQUEMENT LES POURCENTAGES)
 # ============================================================
-st.subheader("🏆 Top 10 personnalités politiques")
+st.subheader("les 10 premières personnalités politiques")
 
 if not top:
     st.warning("Aucune mention de personnalité politique sur cette période.")
 else:
-    df_top = pd.DataFrame(top).sort_values("mentions", ascending=True)
+    df_top = pd.DataFrame(top).sort_values("pourcentage", ascending=True)
     df_top["couleur"] = df_top["genre"].apply(
         lambda g: COULEUR_HOMME if g == "homme" else COULEUR_FEMME
     )
 
-    # Affichage : uniquement le pourcentage
     fig_top = go.Figure()
     for _, row in df_top.iterrows():
         fig_top.add_trace(go.Bar(
@@ -120,10 +164,11 @@ else:
             hovertemplate=(
                 f"<b>{row['nom_fr']}</b><br>"
                 f"Genre: {'Homme' if row['genre'] == 'homme' else 'Femme'}<br>"
-                f"Parti: {row.get('parti', 'N/A')}<br>"
-                f"Fonction: {row.get('fonction', 'N/A')}<br>"
-                f"Part: {row['pourcentage']:.1f}%<br>"
-                f"Mentions: {row['mentions']} (AR: {row['mentions_ar']} | FR: {row['mentions_fr']})"
+                f"Parti: {row.get('parti') or 'N/A'}<br>"
+                f"Fonction: {row.get('fonction') or 'N/A'}<br>"
+                f"<b>Part: {row['pourcentage']:.1f}%</b><br>"
+                f"Mentions: {row['mentions']}<br>"
+                f"🇸🇦 AR: {row['mentions_ar']} | 🇫🇷 FR: {row['mentions_fr']}"
                 "<extra></extra>"
             ),
         ))
@@ -131,7 +176,7 @@ else:
         height=max(400, len(df_top) * 50),
         margin=dict(l=20, r=100, t=20, b=20),
         xaxis_title="Part des mentions (%)",
-        xaxis=dict(range=[0, max(df_top["pourcentage"]) * 1.2]),
+        xaxis=dict(range=[0, max(df_top["pourcentage"]) * 1.25]),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter, sans-serif"),
@@ -140,8 +185,9 @@ else:
 
 st.markdown("---")
 
+
 # ============================================================
-# SECTION 2 — H/F + MÉDIAS
+# SECTION 2 — H/F + DÉTAILS
 # ============================================================
 col_left, col_right = st.columns([1, 1])
 
@@ -182,6 +228,7 @@ with col_right:
     )
 
 st.markdown("---")
+
 
 # ============================================================
 # SECTION 3 — PAR MÉDIA
@@ -232,6 +279,7 @@ else:
 
 st.markdown("---")
 
+
 # ============================================================
 # SECTION 4 — PAR PARTI
 # ============================================================
@@ -271,12 +319,13 @@ else:
 
 st.markdown("---")
 
+
 # ============================================================
 # SECTION 5 — COMPARAISON
 # ============================================================
 st.subheader("🔍 Comparaison entre personnalités")
 
-toutes_persos = [p["nom_fr"] for p in liste_personnalites()]
+toutes_persos = [p["nom_fr"] for p in cached_personnalites()]
 
 col_c1, col_c2 = st.columns([3, 1])
 
@@ -291,12 +340,12 @@ with col_c1:
 with col_c2:
     st.write("")
     st.write("")
-    if st.button("🔄 Comparer"):
+    if st.button("🔄 Rafraîchir"):
+        st.cache_data.clear()
         st.rerun()
 
 if noms_selectionnes and len(noms_selectionnes) >= 2:
-    with st.spinner("Comparaison en cours..."):
-        comparaison = comparer_personnalites(noms_selectionnes, jours=periode)
+    comparaison = cached_comparaison(tuple(noms_selectionnes), periode)
 
     if comparaison:
         df_comp = pd.DataFrame(comparaison)
@@ -308,23 +357,24 @@ if noms_selectionnes and len(noms_selectionnes) >= 2:
         for _, row in df_comp.iterrows():
             fig_comp.add_trace(go.Bar(
                 x=[row["nom_fr"]],
-                y=[row["mentions"]],
+                y=[row["pourcentage"]],
                 marker=dict(color=row["couleur"]),
-                text=f"{row['mentions']}<br>({row['pourcentage']:.1f}%)",
+                text="{}%".format(round(row["pourcentage"], 1)),
                 textposition="outside",
                 showlegend=False,
                 hovertemplate=(
                     f"<b>{row['nom_fr']}</b><br>"
-                    f"Parti: {row.get('parti', 'N/A')}<br>"
+                    f"Parti: {row.get('parti') or 'N/A'}<br>"
+                    f"Part: {row['pourcentage']:.1f}%<br>"
                     f"Mentions: {row['mentions']}<br>"
-                    f"FR: {row['mentions_fr']} | AR: {row['mentions_ar']}"
+                    f"🇸🇦 AR: {row['mentions_ar']} | 🇫🇷 FR: {row['mentions_fr']}"
                     "<extra></extra>"
                 ),
             ))
         fig_comp.update_layout(
             height=400,
             margin=dict(l=20, r=20, t=40, b=20),
-            yaxis_title="Mentions",
+            yaxis_title="Part des mentions (%)",
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
             font=dict(family="Inter, sans-serif"),
@@ -332,6 +382,7 @@ if noms_selectionnes and len(noms_selectionnes) >= 2:
         st.plotly_chart(fig_comp, use_container_width=True)
 
 st.markdown("---")
+
 
 # ============================================================
 # SECTION 6 — TABLEAU COMPLET
@@ -342,13 +393,14 @@ if top:
     df_full = pd.DataFrame(top)
     df_full = df_full[[
         "nom_fr", "nom_ar", "genre", "parti", "fonction",
-        "mentions", "mentions_fr", "mentions_ar", "pourcentage"
+        "mentions", "mentions_ar", "mentions_fr", "pourcentage"
     ]]
     df_full.columns = [
         "Nom (FR)", "Nom (AR)", "Genre", "Parti", "Fonction",
-        "Mentions", "FR", "AR", "%"
+        "Mentions", "AR", "FR", "%"
     ]
     st.dataframe(df_full, use_container_width=True, hide_index=True)
+
 
 # ============================================================
 # FOOTER
