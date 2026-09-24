@@ -1,6 +1,6 @@
 """
 Page Actualités - Consultation des articles de la base de données
-Version 4.1 - Connectée à PostgreSQL + HTML correctement rendu
+Version 4.2 - Connectée à PostgreSQL + Placeholders Unsplash
 """
 
 import streamlit as st
@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import auth
 import style
 from db_universal import get_connexion
+from placeholder import get_image_or_placeholder
 
 st.set_page_config(
     page_title="Actualités - TuniWatch",
@@ -43,9 +44,7 @@ def nettoyer_html(texte):
     if not texte:
         return ""
     texte = str(texte)
-    # Supprimer les balises HTML
     texte = re.sub(r'<[^>]+>', '', texte)
-    # Décoder les entités HTML
     texte = texte.replace('&#233;', 'é').replace('&#232;', 'è')
     texte = texte.replace('&#224;', 'à').replace('&#226;', 'â')
     texte = texte.replace('&#238;', 'î').replace('&#239;', 'ï')
@@ -57,7 +56,6 @@ def nettoyer_html(texte):
     texte = texte.replace('&amp;', '&').replace('&lt;', '<')
     texte = texte.replace('&gt;', '>').replace('&quot;', '"')
     texte = texte.replace('&nbsp;', ' ')
-    # Supprimer les espaces multiples
     texte = re.sub(r'\s+', ' ', texte).strip()
     return texte
 
@@ -226,7 +224,7 @@ def section_titre(icone, titre, sous_titre=""):
 
 
 def carte_article(row):
-    """Affiche une carte d'article."""
+    """Affiche une carte d'article avec placeholder si pas d'image."""
     titre = nettoyer_html(row.get("titre", "Sans titre"))[:150]
     source = nettoyer_html(row.get("source", "Inconnue"))[:40]
     date_pub = str(row.get("date_publication", ""))[:10] if row.get("date_publication") else ""
@@ -237,13 +235,15 @@ def carte_article(row):
     theme = nettoyer_html(row.get("theme", ""))
     sentiment = row.get("sentiment_cat")
 
-    # Nettoyer les valeurs "nan"
     if sentiment in ("nan", "None", "null", ""):
         sentiment = None
     if theme in ("nan", "None", "null", ""):
         theme = None
 
-    # Badge de sentiment (une seule ligne)
+    # Récupérer l'image ou le placeholder
+    image_finale = get_image_or_placeholder(image_url, theme)
+
+    # Badge de sentiment
     badge_html = ""
     if sentiment and sentiment in ("positif", "negatif", "neutre"):
         colors = {"positif": C_VERT, "negatif": C_ROUGE, "neutre": C_JAUNE}
@@ -254,7 +254,7 @@ def carte_article(row):
             f'text-transform:uppercase;">{sentiment}</span>'
         )
 
-    # Badge de thème (une seule ligne)
+    # Badge de thème
     theme_html = ""
     if theme and theme not in ("nan", "None"):
         theme_html = (
@@ -263,24 +263,16 @@ def carte_article(row):
             f'font-weight:700;">{theme}</span>'
         )
 
-    # Image (une seule ligne)
-    if image_url and str(image_url).startswith("http"):
-        image_html = (
-            f'<div style="width:100%;height:160px;border-radius:12px 12px 0 0;'
-            f'overflow:hidden;background:#f1f5f9;">'
-            f'<img src="{image_url}" style="width:100%;height:100%;object-fit:cover;" '
-            f'onerror="this.parentElement.style.display=\'none\'"/>'
-            f'</div>'
-        )
-    else:
-        image_html = (
-            f'<div style="width:100%;height:100px;border-radius:12px 12px 0 0;'
-            f'background:linear-gradient(135deg,{C_PRIMAIRE} 0%,#b8000f 100%);'
-            f'display:flex;align-items:center;justify-content:center;'
-            f'color:white;font-size:2rem;">📰</div>'
-        )
+    # Image (avec placeholder)
+    image_html = (
+        f'<div style="width:100%;height:160px;border-radius:12px 12px 0 0;'
+        f'overflow:hidden;background:#f1f5f9;">'
+        f'<img src="{image_finale}" style="width:100%;height:100%;object-fit:cover;" '
+        f'onerror="this.src=\'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=800&h=450&fit=crop\'"/>'
+        f'</div>'
+    )
 
-    # Description (une seule ligne)
+    # Description
     desc_html = ""
     if description:
         desc_html = (
@@ -288,7 +280,7 @@ def carte_article(row):
             f'margin:8px 0 0 0;">{description}</p>'
         )
 
-    # HTML complet sur UNE SEULE LIGNE
+    # HTML complet
     html = (
         f'<div style="background:#ffffff;border-radius:12px;overflow:hidden;'
         f'box-shadow:0 2px 8px rgba(15,23,42,0.06);margin-bottom:14px;'
