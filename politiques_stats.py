@@ -1,48 +1,65 @@
 """
 Module politiques_stats.py - Analyse des personnalites politiques
-Version 3.0 - Variantes arabes + Pourcentages + Langues
+Version 4.0 - Recherche stricte (nom complet) + Variantes + Pourcentages
 """
 
 from db_universal import get_connexion
 
 
-def generer_variantes(nom_fr, nom_ar=None):
-    """Genere toutes les variantes possibles d'un nom."""
+def generer_variantes(nom_fr, nom_ar=None, stricte=False):
+    """
+    Genere les variantes d'un nom.
+    - stricte=False : variantes souples (nom seul autorise)
+    - stricte=True  : nom complet obligatoire
+    """
     variantes = set()
 
     if nom_fr:
         variantes.add(nom_fr)
+        # Sans accents
         sans_accents = (nom_fr
             .replace('ï', 'i').replace('é', 'e').replace('è', 'e')
             .replace('ê', 'e').replace('à', 'a').replace('â', 'a')
             .replace('ô', 'o').replace('û', 'u').replace('ç', 'c')
             .replace('î', 'i')
         )
-        variantes.add(sans_accents)
-        if nom_fr.endswith('ed'):
-            variantes.add(nom_fr[:-1])
-        for particule in [' Ben ', ' El ', ' Al ', ' Caid ', ' Caïd ']:
-            if particule in nom_fr:
-                variantes.add(nom_fr.replace(particule, ' '))
-        mots = nom_fr.split()
-        if len(mots) >= 2 and len(mots[-1]) >= 4:
-            variantes.add(mots[-1])
+        if sans_accents != nom_fr:
+            variantes.add(sans_accents)
+
+        # Variantes souples uniquement si NON stricte
+        if not stricte:
+            if nom_fr.endswith('ed'):
+                variantes.add(nom_fr[:-1])
+            for particule in [' Ben ', ' El ', ' Al ', ' Caid ', ' Caïd ']:
+                if particule in nom_fr:
+                    variantes.add(nom_fr.replace(particule, ' '))
+            mots = nom_fr.split()
+            if len(mots) >= 2 and len(mots[-1]) >= 4:
+                variantes.add(mots[-1])
 
     if nom_ar:
         variantes.add(nom_ar)
-        variantes.add(nom_ar.replace('ّ', ''))
-        variantes.add(nom_ar.replace('أ', 'ا').replace('إ', 'ا'))
-        if nom_ar.endswith('ة'):
-            variantes.add(nom_ar[:-1])
-        mots_ar = nom_ar.split()
-        if len(mots_ar) >= 2 and len(mots_ar[-1]) >= 3:
-            variantes.add(mots_ar[-1])
+        # Sans chadda
+        v_sans_chadda = nom_ar.replace('ّ', '')
+        if v_sans_chadda != nom_ar:
+            variantes.add(v_sans_chadda)
+        # Sans alif hamza
+        v_sans_hamza = nom_ar.replace('أ', 'ا').replace('إ', 'ا')
+        if v_sans_hamza != nom_ar:
+            variantes.add(v_sans_hamza)
+
+        if not stricte:
+            if nom_ar.endswith('ة'):
+                variantes.add(nom_ar[:-1])
+            mots_ar = nom_ar.split()
+            if len(mots_ar) >= 2 and len(mots_ar[-1]) >= 3:
+                variantes.add(mots_ar[-1])
 
     return [v for v in variantes if v and len(v) >= 3]
 
 
 def _construire_clause_recherche(variantes, champs=('titre', 'description')):
-    """Construit une clause SQL OR sur les variantes et les champs."""
+    """Construit une clause SQL OR sur les variantes."""
     conditions = []
     params = []
     for variante in variantes:
@@ -70,7 +87,7 @@ def liste_personnalites():
     curseur = conn.cursor(dictionary=True)
     try:
         curseur.execute("""
-            SELECT id, nom_fr, nom_ar, genre, parti, fonction
+            SELECT id, nom_fr, nom_ar, genre, parti, fonction, recherche_stricte
             FROM personnalites_politiques
             WHERE actif = 1
             ORDER BY nom_fr
@@ -81,14 +98,14 @@ def liste_personnalites():
         conn.close()
 
 
-def mentions_personnalite(nom_fr, nom_ar=None):
-    """Compte les mentions d'une personnalite (avec variantes)."""
+def mentions_personnalite(nom_fr, nom_ar=None, stricte=False):
+    """Compte les mentions d'une personnalite."""
     conn = get_connexion()
     if conn is None:
         return 0
     curseur = conn.cursor()
     try:
-        variantes = generer_variantes(nom_fr, nom_ar)
+        variantes = generer_variantes(nom_fr, nom_ar, stricte)
         clause, params = _construire_clause_recherche(variantes)
         curseur.execute("SELECT COUNT(*) FROM articles WHERE " + clause, params)
         result = curseur.fetchone()
@@ -98,14 +115,14 @@ def mentions_personnalite(nom_fr, nom_ar=None):
         conn.close()
 
 
-def mentions_par_langue(nom_fr, nom_ar=None):
+def mentions_par_langue(nom_fr, nom_ar=None, stricte=False):
     """Compte les mentions par langue (FR / AR)."""
     conn = get_connexion()
     if conn is None:
         return {"fr": 0, "ar": 0, "total": 0}
     curseur = conn.cursor(dictionary=True)
     try:
-        variantes = generer_variantes(nom_fr, nom_ar)
+        variantes = generer_variantes(nom_fr, nom_ar, stricte)
         clause, params = _construire_clause_recherche(variantes)
         curseur.execute("SELECT titre, description FROM articles WHERE " + clause, params)
         rows = curseur.fetchall()
@@ -123,39 +140,16 @@ def mentions_par_langue(nom_fr, nom_ar=None):
         conn.close()
 
 
-def mentions_par_media(nom_fr, nom_ar=None, limite=10):
-    """Compte les mentions d'une personnalite par media."""
-    conn = get_connexion()
-    if conn is None:
-        return []
-    curseur = conn.cursor(dictionary=True)
-    try:
-        variantes = generer_variantes(nom_fr, nom_ar)
-        clause, params = _construire_clause_recherche(variantes)
-        params.append(limite)
-        curseur.execute("""
-            SELECT source, COUNT(*) AS nb
-            FROM articles
-            WHERE """ + clause + """
-            GROUP BY source
-            ORDER BY nb DESC
-            LIMIT %s
-        """, params)
-        return curseur.fetchall()
-    finally:
-        curseur.close()
-        conn.close()
-
-
 def top_personnalites(limite=10):
     """Retourne les personnalites les plus mentionnees avec pourcentages."""
     personnalites = liste_personnalites()
     resultats = []
 
     for p in personnalites:
-        nb = mentions_personnalite(p["nom_fr"], p.get("nom_ar"))
+        stricte = bool(p.get("recherche_stricte", 0))
+        nb = mentions_personnalite(p["nom_fr"], p.get("nom_ar"), stricte)
         if nb > 0:
-            langues = mentions_par_langue(p["nom_fr"], p.get("nom_ar"))
+            langues = mentions_par_langue(p["nom_fr"], p.get("nom_ar"), stricte)
             resultats.append({
                 "nom_fr": p["nom_fr"],
                 "nom_ar": p["nom_ar"],
@@ -165,6 +159,7 @@ def top_personnalites(limite=10):
                 "mentions": nb,
                 "mentions_fr": langues.get("fr", 0),
                 "mentions_ar": langues.get("ar", 0),
+                "recherche_stricte": stricte,
             })
 
     resultats.sort(key=lambda x: x["mentions"], reverse=True)
@@ -203,7 +198,7 @@ def mentions_par_genre_et_media(limite_medias=10):
     curseur = conn.cursor(dictionary=True)
     try:
         curseur.execute("""
-            SELECT nom_fr, nom_ar, genre
+            SELECT nom_fr, nom_ar, genre, recherche_stricte
             FROM personnalites_politiques
             WHERE actif = 1
         """)
@@ -226,7 +221,8 @@ def mentions_par_genre_et_media(limite_medias=10):
             nb_f = 0
 
             for p in personnalites:
-                variantes = generer_variantes(p["nom_fr"], p.get("nom_ar"))
+                stricte = bool(p.get("recherche_stricte", 0))
+                variantes = generer_variantes(p["nom_fr"], p.get("nom_ar"), stricte)
                 clause, params = _construire_clause_recherche(variantes)
                 params.insert(0, source)
                 curseur.execute("""
@@ -260,7 +256,7 @@ def mentions_par_genre_et_media(limite_medias=10):
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("TEST politiques_stats.py v3.0")
+    print("TEST politiques_stats.py v4.0")
     print("=" * 70)
 
     print("\n1. Liste des personnalites :")
@@ -273,10 +269,11 @@ if __name__ == "__main__":
     print()
     for i, p in enumerate(top, 1):
         emoji = "H" if p["genre"] == "homme" else "F"
+        strict = " [STRICT]" if p.get("recherche_stricte") else ""
         barre = "#" * min(int(p["pourcentage"]), 30)
-        print("   {:2d}. [{}] {:30s} {:3d} ({:.1f}%) FR:{} AR:{}".format(
+        print("   {:2d}. [{}] {:30s} {:3d} ({:.1f}%) FR:{} AR:{}{}".format(
             i, emoji, p["nom_fr"][:30], p["mentions"], p["pourcentage"],
-            p["mentions_fr"], p["mentions_ar"]))
+            p["mentions_fr"], p["mentions_ar"], strict))
         print("       {}".format(barre))
 
     print("\n3. Repartition Hommes/Femmes :")
