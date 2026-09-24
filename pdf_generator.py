@@ -201,8 +201,8 @@ def generer_html_rapport():
     <body>
         <!-- EN-TÊTE -->
         <div class="header">
-            <div class="header-logo">🇹🇳</div>
-            <h1 class="header-title">TuniWatch</h1>
+    <img src="/root/tuniwatch/assets/logo_white.png" class="header-logo-img" alt="TuniWatch Logo" />
+    <h1 class="header-title">TuniWatch</h1>
             <p class="header-subtitle">Observatoire des médias tunisiens</p>
             <p class="header-date">Rapport généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}</p>
         </div>
