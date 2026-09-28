@@ -27,6 +27,11 @@ COULEUR_HOMME = "#1D3557"
 COULEUR_FEMME = "#EF476F"
 
 from status import afficher_status
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import auth
+import style
 
 # Indicateur de connexion
 col_st1, col_st2, col_st3 = st.columns([4, 1, 1])
