@@ -1,6 +1,6 @@
 """
 Page Médias - Analyse détaillée par source
-Version 2.0 - Sélection unique + comparaison globale + commentaires
+Version 2.1 - Fix graphique thèmes (1 seul thème = carte visuelle)
 """
 
 import streamlit as st
@@ -35,6 +35,7 @@ with col_st3:
     if st.button("🔄 Rafraîchir"):
         st.cache_data.clear()
         st.rerun()
+
 # ============================================================
 # PALETTE PREMIUM
 # ============================================================
@@ -115,7 +116,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# FONCTIONS PREMIUM (concaténation)
+# FONCTIONS PREMIUM
 # ============================================================
 
 def kpi_card(icone, label, valeur, tendance=None, couleur=None):
@@ -259,11 +260,9 @@ def generer_commentaire(source, stats, themes_list, sentiment_dict):
     if not stats:
         return "Aucune donnée disponible pour ce média."
 
-    # Analyse 1 : Volume
     nb = stats['nb_articles']
     phrase_volume = f"<b>{source}</b> a publié <b>{nb} articles</b> sur la période analysée."
 
-    # Analyse 2 : Thème principal
     phrase_theme = ""
     if themes_list:
         top_theme = themes_list[0]
@@ -273,13 +272,11 @@ def generer_commentaire(source, stats, themes_list, sentiment_dict):
             f"avec <b>{top_theme['nb_articles']} articles</b>."
         )
 
-        # Si plusieurs thèmes
         if len(themes_list) > 1:
             autres = themes_list[1:3]
             noms_autres = [NOMS_THEMES.get(t['theme'], t['theme']) for t in autres]
             phrase_theme += f" Viennent ensuite : <i>{', '.join(noms_autres)}</i>."
 
-    # Analyse 3 : Sentiment dominant
     total_s = sentiment_dict.get('positifs', 0) + sentiment_dict.get('neutres', 0) + sentiment_dict.get('negatifs', 0)
     phrase_sentiment = ""
     if total_s > 0:
@@ -303,7 +300,6 @@ def generer_commentaire(source, stats, themes_list, sentiment_dict):
             f"<span style='color:{C_ROUGE}'>✗ {ng:.0f}% négatif</span>."
         )
 
-    # Analyse 4 : Score
     phrase_score = ""
     score = stats.get('score_moyen', 0)
     if score > 0:
@@ -316,6 +312,38 @@ def generer_commentaire(source, stats, themes_list, sentiment_dict):
         phrase_score = f" Le score moyen de pertinence est <b>{score:.2f}</b> — <i>{note}</i>."
 
     return phrase_volume + phrase_theme + phrase_sentiment + phrase_score
+
+
+def afficher_carte_theme_unique(theme, nb_articles):
+    """Affiche une carte visuelle quand un média n'a qu'un seul thème."""
+    emoji = EMOJIS_THEMES.get(theme, "🌐")
+    nom = NOMS_THEMES.get(theme, theme)
+    couleur = COULEURS_THEMES.get(theme, C_GRIS)
+
+    html = (
+        f'<div style="'
+        f'background: linear-gradient(135deg, {couleur} 0%, {couleur}dd 100%); '
+        f'border-radius: 16px; '
+        f'padding: 40px 30px; '
+        f'text-align: center; '
+        f'color: white; '
+        f'height: 340px; '
+        f'display: flex; '
+        f'flex-direction: column; '
+        f'justify-content: center; '
+        f'align-items: center; '
+        f'box-shadow: 0 4px 20px {couleur}40;'
+        f'">'
+        f'<div style="font-size: 4rem; margin-bottom: 15px;">{emoji}</div>'
+        f'<div style="font-size: 1.4rem; font-weight: 800; margin-bottom: 10px;">{nom}</div>'
+        f'<div style="font-size: 3.5rem; font-weight: 900; color: #FFD166; '
+        f'line-height: 1; margin-bottom: 5px;">{nb_articles}</div>'
+        f'<div style="font-size: 0.9rem; opacity: 0.9;">'
+        f'article{"s" if nb_articles > 1 else ""}'
+        f'</div>'
+        f'</div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # ============================================================
@@ -372,7 +400,7 @@ if not source_selectionnee:
     st.stop()
 
 # ============================================================
-# SECTION 2 : COMPARAISON GLOBALE (toujours visible)
+# SECTION 2 : COMPARAISON GLOBALE
 # ============================================================
 section_titre(
     "📊",
@@ -380,7 +408,6 @@ section_titre(
     "Évolution comparée des 5 médias les plus actifs"
 )
 
-# Prendre les 5 top sources pour la comparaison
 top_5_sources = [s["source"] for s in top_sources_data[:5]]
 
 if top_5_sources:
@@ -396,7 +423,6 @@ if top_5_sources:
         for idx, src in enumerate(top_5_sources):
             df_src = df_comp[df_comp["source"] == src]
             if not df_src.empty:
-                # Mettre en évidence le média sélectionné
                 is_selected = (src == source_selectionnee)
                 fig_comp.add_trace(go.Scatter(
                     x=df_src["jour"],
@@ -438,7 +464,6 @@ if top_5_sources:
 # ============================================================
 section_titre("📺", f"Média sélectionné : {source_selectionnee}", f"Profil complet sur {jours} jours")
 
-# Charger toutes les données du média
 stats = cockpit_stats.stats_par_source(source_selectionnee, jours)
 themes_list = cockpit_stats.themes_par_source(source_selectionnee, limite=10)
 evolution_m = cockpit_stats.evolution_par_source(source_selectionnee, jours)
@@ -498,33 +523,42 @@ with col1:
         )
         df_th = df_th.sort_values("nb_articles")
 
-        fig_th = go.Figure(go.Bar(
-            x=df_th["nb_articles"],
-            y=df_th["label"],
-            orientation="h",
-            marker=dict(
-                color=[COULEURS_THEMES.get(t, C_GRIS) for t in df_th["theme"]],
-                line=dict(width=0)
-            ),
-            text=df_th["nb_articles"],
-            textposition="outside",
-            textfont=dict(size=12, color="#0f172a", family="Inter"),
-            hovertemplate="<b>%{y}</b><br>%{x} articles<extra></extra>"
-        ))
-        fig_th.update_layout(
-            height=340, showlegend=False,
-            margin=dict(l=10, r=40, t=20, b=10),
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(family="Inter, sans-serif"),
-            xaxis=dict(showgrid=True, gridcolor="rgba(15,23,42,0.04)",
-                       showline=False,
-                       tickfont=dict(size=11, color="#94a3b8")),
-            yaxis=dict(showgrid=False,
-                       tickfont=dict(size=12, color="#0f172a")),
-            bargap=0.35
-        )
-        st.plotly_chart(fig_th, use_container_width=True)
+        # ✅ CORRECTION : Si 1 seul thème → carte visuelle au lieu d'une barre
+        if len(df_th) == 1:
+            theme_unique = df_th.iloc[0]
+            afficher_carte_theme_unique(
+                theme_unique['theme'],
+                theme_unique['nb_articles']
+            )
+        else:
+            # Graphique à barres (2+ thèmes)
+            fig_th = go.Figure(go.Bar(
+                x=df_th["nb_articles"],
+                y=df_th["label"],
+                orientation="h",
+                marker=dict(
+                    color=[COULEURS_THEMES.get(t, C_GRIS) for t in df_th["theme"]],
+                    line=dict(width=0)
+                ),
+                text=df_th["nb_articles"],
+                textposition="outside",
+                textfont=dict(size=12, color="#0f172a", family="Inter"),
+                hovertemplate="<b>%{y}</b><br>%{x} articles<extra></extra>"
+            ))
+            fig_th.update_layout(
+                height=340, showlegend=False,
+                margin=dict(l=10, r=40, t=20, b=10),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Inter, sans-serif"),
+                xaxis=dict(showgrid=True, gridcolor="rgba(15,23,42,0.04)",
+                           showline=False,
+                           tickfont=dict(size=11, color="#94a3b8")),
+                yaxis=dict(showgrid=False,
+                           tickfont=dict(size=12, color="#0f172a")),
+                bargap=0.35
+            )
+            st.plotly_chart(fig_th, use_container_width=True)
     else:
         st.info("Aucun thème détecté pour ce média.")
 
