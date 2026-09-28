@@ -213,7 +213,7 @@ st.markdown("---")
 # ============================================================
 # SECTION 2 — H/F + DÉTAILS
 # ============================================================
-col_left, col_right = st.columns([1, 1])
+col_left, col_right = st.columns([2, 1])
 
 with col_left:
     st.subheader("⚖️ Répartition Hommes / Femmes")
@@ -227,7 +227,7 @@ with col_left:
         textfont=dict(size=13, color="white"),
     )])
     fig_pie.update_layout(
-        height=350, showlegend=False,
+        height=500, showlegend=False,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         annotations=[dict(text=f"<b>{total_mentions}</b><br>mentions",
