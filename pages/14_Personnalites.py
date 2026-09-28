@@ -1,8 +1,8 @@
 """
 Page 14_Personnalites.py - Analyse des personnalités politiques
-Version 3.0 - Pourcentages + Cache + Priorité arabe
+Version 3.1 - Pourcentages + Cache + Bouton Rafraîchir
 """
-        
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -16,6 +16,7 @@ from politiques_stats import (
     stats_globales,
 )
 
+# ⚠️ set_page_config DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
 st.set_page_config(
     page_title="Personnalités politiques - TuniWatch",
     page_icon="🏛️",
@@ -29,37 +30,37 @@ COULEUR_FEMME = "#EF476F"
 # ============================================================
 # FONCTIONS AVEC CACHE
 # ============================================================
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def cached_top(limite, jours):
     return top_personnalites(limite, jours=jours)
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def cached_repartition(jours):
     return repartition_genre(jours=jours)
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def cached_media(limite, jours):
     return mentions_par_genre_et_media(limite, jours=jours)
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def cached_parti(jours):
     return mentions_par_parti(jours=jours)
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def cached_stats():
     return stats_globales()
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def cached_personnalites():
     return liste_personnalites()
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def cached_comparaison(noms_tuple, jours):
     return comparer_personnalites(list(noms_tuple), jours=jours)
 
@@ -77,6 +78,16 @@ st.markdown("""
     </p>
 </div>
 """, unsafe_allow_html=True)
+
+
+# ============================================================
+# BOUTON RAFRAÎCHIR
+# ============================================================
+col_r1, col_r2 = st.columns([5, 1])
+with col_r2:
+    if st.button("🔄 Rafraîchir", help="Vider le cache et recharger les données"):
+        st.cache_data.clear()
+        st.rerun()
 
 
 # ============================================================
@@ -138,9 +149,9 @@ st.markdown("---")
 
 
 # ============================================================
-# SECTION 1 — TOP 10 (UNIQUEMENT LES POURCENTAGES)
+# SECTION 1 — TOP 10
 # ============================================================
-st.subheader("les 10 premières personnalités politiques")
+st.subheader("Les 10 premières personnalités politiques")
 
 if not top:
     st.warning("Aucune mention de personnalité politique sur cette période.")
@@ -340,9 +351,6 @@ with col_c1:
 with col_c2:
     st.write("")
     st.write("")
-    if st.button("🔄 Rafraîchir"):
-        st.cache_data.clear()
-        st.rerun()
 
 if noms_selectionnes and len(noms_selectionnes) >= 2:
     comparaison = cached_comparaison(tuple(noms_selectionnes), periode)
