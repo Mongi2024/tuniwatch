@@ -1,11 +1,19 @@
 """
 Page 14_Personnalites.py - Analyse des personnalités politiques
-Version 3.1 - Pourcentages + Cache + Bouton Rafraîchir
+Version 3.2 - Auth + Style + Bouton Rafraîchir + Indicateur connexion
 """
 
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import sys
+import os
+
+# Ajouter le dossier parent au path pour importer auth, style, politiques_stats
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import auth
+import style
 from politiques_stats import (
     top_personnalites,
     repartition_genre,
@@ -15,6 +23,7 @@ from politiques_stats import (
     liste_personnalites,
     stats_globales,
 )
+from status import afficher_status
 
 # ⚠️ set_page_config DOIT ÊTRE LA PREMIÈRE COMMANDE STREAMLIT
 st.set_page_config(
@@ -23,24 +32,13 @@ st.set_page_config(
     layout="wide",
 )
 
+# ⚠️ IMPORTANT : Auth et Style AVANT tout affichage
+style.appliquer_style()
+auth.require_login()
+
 COULEUR_HOMME = "#1D3557"
 COULEUR_FEMME = "#EF476F"
 
-from status import afficher_status
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import auth
-import style
-
-# Indicateur de connexion
-col_st1, col_st2, col_st3 = st.columns([4, 1, 1])
-with col_st2:
-    afficher_status()
-with col_st3:
-    if st.button("🔄 Rafraîchir"):
-        st.cache_data.clear()
-        st.rerun()
 
 # ============================================================
 # FONCTIONS AVEC CACHE
@@ -83,23 +81,23 @@ def cached_comparaison(noms_tuple, jours):
 # ============================================================
 # EN-TÊTE
 # ============================================================
-st.title("🏛️ Personnalités politiques / الشخصيات السياسية")
-st.markdown("""
-<div style="background: linear-gradient(90deg, #E63946 0%, #1D3557 100%);
-            padding: 15px; border-radius: 8px; color: white; margin-bottom: 20px;">
-    <h4 style="margin: 0; color: white;">📊 Présence des personnalités politiques dans les médias tunisiens</h4>
-    <p style="margin: 5px 0 0 0; font-size: 0.95rem;">
-        Comparaison Hommes / Femmes — par média — par langue — par parti
-    </p>
-</div>
-""", unsafe_allow_html=True)
+style.page_header(
+    titre="Personnalités politiques / الشخصيات السياسية",
+    icone="🏛️",
+    description="Présence des personnalités politiques dans les médias tunisiens — Comparaison Hommes / Femmes par média, langue et parti",
+    badge="ANALYSE POLITIQUE"
+)
 
 
 # ============================================================
-# BOUTON RAFRAÎCHIR
+# BARRE DE STATUT (connexion + rafraîchir)
 # ============================================================
-col_r1, col_r2 = st.columns([5, 1])
-with col_r2:
+col_st1, col_st2, col_st3 = st.columns([4, 1, 1])
+
+with col_st2:
+    afficher_status()
+
+with col_st3:
     if st.button("🔄 Rafraîchir", help="Vider le cache et recharger les données"):
         st.cache_data.clear()
         st.rerun()
@@ -428,11 +426,4 @@ if top:
 # ============================================================
 # FOOTER
 # ============================================================
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #888; padding: 20px; font-size: 0.85rem;">
-    <b>🇹🇳 TuniWatch</b> — Observatoire des médias tunisiens<br>
-    Analyse des personnalités politiques — Données en temps réel<br>
-    © 2026 Khadraoui Mongi
-</div>
-""", unsafe_allow_html=True)
+style.footer()
