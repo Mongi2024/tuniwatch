@@ -2,7 +2,13 @@
 Page 14_Personnalites.py - Analyse des personnalités politiques
 Version 3.0 - Pourcentages + Cache + Priorité arabe
 """
-
+# Bouton Rafraîchir en haut à droite
+col_r1, col_r2 = st.columns([5, 1])
+with col_r2:
+    if st.button("🔄 Rafraîchir", help="Vider le cache et recharger"):
+        st.cache_data.clear()
+        st.rerun()
+        
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
