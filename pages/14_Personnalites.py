@@ -26,6 +26,16 @@ st.set_page_config(
 COULEUR_HOMME = "#1D3557"
 COULEUR_FEMME = "#EF476F"
 
+from status import afficher_status
+
+# Indicateur de connexion
+col_st1, col_st2, col_st3 = st.columns([4, 1, 1])
+with col_st2:
+    afficher_status()
+with col_st3:
+    if st.button("🔄 Rafraîchir"):
+        st.cache_data.clear()
+        st.rerun()
 
 # ============================================================
 # FONCTIONS AVEC CACHE
