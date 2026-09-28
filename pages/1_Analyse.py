@@ -1,6 +1,6 @@
 """
 Page Analyse - Dashboard premium TuniWatch
-Version 4.2 - Correction affichage cartes KPI (concaténation)
+Version 4.3 - Fix légende donut thèmes (groupement + légende verticale)
 """
 
 import streamlit as st
@@ -67,7 +67,7 @@ EMOJIS_THEMES = {
 }
 
 # ============================================================
-# CSS PREMIUM — fond de page + cartes
+# CSS PREMIUM
 # ============================================================
 st.markdown("""
 <style>
@@ -105,17 +105,17 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 # ============================================================
 # FONCTIONS PREMIUM
 # ============================================================
 
 def kpi_avec_sparkline(icone, label, valeur, tendance, couleur, spark_data=None):
-    """Carte KPI premium — version CORRIGÉE avec concaténation."""
-    
+    """Carte KPI premium avec concaténation."""
     is_positive = tendance.startswith("+")
     arrow = "↑" if is_positive else "↓"
     trend_color = couleur if is_positive else "#ef4444"
-    
+
     html = (
         '<div style="'
         'background: #ffffff; '
@@ -335,8 +335,8 @@ with col2:
             hole=0.7,
             marker=dict(colors=[C_VERT, C_JAUNE, C_ROUGE],
                         line=dict(color="white", width=3)),
-            textinfo="percent", textposition="outside",
-            textfont=dict(size=12, color="#0f172a"),
+            textinfo="percent", textposition="inside",
+            textfont=dict(size=13, color="white"),
             hovertemplate="<b>%{label}</b><br>%{value} (%{percent})<extra></extra>",
             sort=False
         )])
@@ -401,34 +401,81 @@ with col2:
     stats_themes = cockpit_stats.stats_themes_rapide()
     if stats_themes:
         df_th = pd.DataFrame(stats_themes)
-        df_th["label"] = df_th["theme"].apply(
-            lambda t: f"{EMOJIS_THEMES.get(t, '🌐')} {t}"
+
+        # ✅ CORRECTION : Grouper les petits thèmes (< 3%) dans "Autres"
+        total_th = int(df_th["nb_articles"].sum())
+        df_th["pct"] = df_th["nb_articles"] / total_th * 100
+
+        seuil = 3.0  # Thèmes < 3% → "Autres"
+        gros = df_th[df_th["pct"] >= seuil].copy()
+        petits = df_th[df_th["pct"] < seuil]
+
+        if len(petits) > 0:
+            autres = {
+                "theme": "autres",
+                "nb_articles": int(petits["nb_articles"].sum()),
+            }
+            gros = pd.concat([gros, pd.DataFrame([autres])], ignore_index=True)
+
+        # Noms d'affichage courts
+        noms_affichage = {
+            "violence_femmes": "Violence femmes",
+            "discours_haine": "Discours haine",
+            "presence_femmes": "Présence femmes",
+            "presence_handicapes": "Handicapés",
+            "presence_jeunes": "Jeunes",
+            "equilibre_politique": "Équilibre politique",
+            "equilibre_regional": "Équilibre régional",
+            "autres": "Autres",
+        }
+
+        gros["label"] = gros["theme"].apply(
+            lambda t: f"{EMOJIS_THEMES.get(t, '🌐')} {noms_affichage.get(t, t)}"
         )
+
+        # Couleurs
+        couleurs_map = dict(COULEURS_THEMES)
+        couleurs_map["autres"] = "#94a3b8"
+
         fig = go.Figure(data=[go.Pie(
-            labels=df_th["label"], values=df_th["nb_articles"],
+            labels=gros["label"],
+            values=gros["nb_articles"],
             hole=0.65,
             marker=dict(
-                colors=[COULEURS_THEMES.get(t, "#94a3b8") for t in df_th["theme"]],
+                colors=[couleurs_map.get(t, "#94a3b8") for t in gros["theme"]],
                 line=dict(color="white", width=3)
             ),
-            textinfo="percent", textposition="outside",
-            textfont=dict(size=12, color="#0f172a"),
+            textinfo="percent",
+            textposition="inside",
+            insidetextorientation="radial",
+            textfont=dict(size=12, color="white", family="Inter"),
             hovertemplate="<b>%{label}</b><br>%{value} articles<br>%{percent}<extra></extra>",
-            sort=False
+            sort=False,
         )])
-        total_th = int(df_th["nb_articles"].sum())
+
         fig.update_layout(
-            showlegend=True, height=360,
+            showlegend=True,
+            height=360,
             margin=dict(l=10, r=10, t=20, b=10),
-            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
             font=dict(family="Inter, sans-serif"),
-            legend=dict(orientation="h", yanchor="bottom", y=-0.2,
-                        xanchor="center", x=0.5, font=dict(size=10)),
+            legend=dict(
+                orientation="v",
+                yanchor="middle",
+                y=0.5,
+                xanchor="left",
+                x=1.02,
+                font=dict(size=11, color="#0f172a"),
+                bgcolor="rgba(0,0,0,0)",
+            ),
             annotations=[dict(
-                text=f"<b style='font-size:20px; color:#0f172a'>{total_th}</b><br>"
-                     f"<span style='font-size:10px; color:#94a3b8'>ARTICLES</span>",
+                text=(
+                    f"<b style='font-size:22px; color:#0f172a'>{total_th}</b><br>"
+                    f"<span style='font-size:10px; color:#94a3b8'>ARTICLES</span>"
+                ),
                 x=0.5, y=0.5, showarrow=False, font=dict(family="Inter")
-            )]
+            )],
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
